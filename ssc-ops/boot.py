@@ -35,6 +35,9 @@ def main():
         exec(_load(n), sys.modules[n].__dict__)
     from lhc_odds import install
     install(sys.modules["core"])
+    if os.path.isfile(os.path.join(_H, "xam-market.enabled")):
+        from xam_market import start
+        start(sys.modules["core"])
     g = {"__name__": "__main__", "__file__": os.path.join(_H, "app.py"),
          "__package__": None, "__builtins__": __builtins__}
     exec(_load("app"), g)

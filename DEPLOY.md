@@ -31,3 +31,7 @@ python3 ops/backup.py /opt/ssc-ops/ssc_ops.db /opt/poker-online/data/poker.db /v
 ```
 
 脚本逐库生成 SQLite 快照，通过完整性检查后输出备份目录。使用实际 DATA_DIR 替换示例路径。另行保存服务配置和密钥。恢复演练应在隔离目录使用这对快照，检查账户余额、最后一笔流水和房间记录，再启动测试服务。
+
+## 新澳门六合彩独立盘口
+
+先运行 xam-draws.timer 并确认最近开奖记录。SQLite 主站在部署 xam_market.py 和更新的 boot.py 后，通过部署目录内的 xam-market.enabled 文件启用盘口 99001，重启主站生效。每天按 Asia/Shanghai 的 21:26:00 停止接受新单。盘口只接受已接入的号码、头数和尾数玩法，按入单赔率结算。同步失败后超过四分钟停止接受新单。期号不连续、归档过期或号码冲突时检查主站和采集服务日志。
