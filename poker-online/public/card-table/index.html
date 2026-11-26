@@ -1,0 +1,20 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>棋牌桌</title><style>
+*{box-sizing:border-box}body{margin:auto;max-width:640px;background:#092c29;color:#faf5e7;font:16px/1.5 system-ui;padding:20px}header,.bar,.cards{display:flex;align-items:center;justify-content:space-between;gap:6px}a{color:#ead5a1}h1{font-size:26px}h2{font-size:15px;color:#c7d9d2;margin:8px 0}main{padding:16px;border:1px solid #547770;border-radius:20px;background:#103e36}.cards{justify-content:flex-start;gap:5px;margin-bottom:14px}.card{border:none;border-radius:7px;background:#fff9eb;color:#182927;width:17%;max-width:68px;aspect-ratio:2/3;font:bold clamp(17px,5vw,26px) Georgia;padding:0}.red{color:#ab382f}.back{color:#e0cfaa;background:repeating-linear-gradient(45deg,#374967 0 3px,#435676 3px 5px);border:3px solid #c5c9bc}.picked{outline:3px solid #f7c568;transform:translateY(-4px)}#actions{display:flex;gap:8px;flex-wrap:wrap}#actions button{border:0;padding:10px 15px;border-radius:8px;background:#efd099;color:#282415;font-weight:bold}details{margin-top:18px;color:#cadbd0}p{min-height:24px}button{cursor:pointer}button:disabled{cursor:default}
+#away{display:grid;grid-template-columns:1fr 1fr}.seat{border:1px solid #45756b;border-radius:8px;padding:7px;font-size:13px}.seat.acting{border-color:#e4bc70;color:#ffe1aa}
+*{box-sizing:border-box}
+body{max-width:1100px;margin:auto;padding:clamp(10px,2vw,24px);background:#f7f8fa;color:#232b39;font:16px/1.5 system-ui}
+header{min-height:82px;padding:12px clamp(12px,3vw,36px);border:1px solid #e3d5bf;background:linear-gradient(105deg,white 25%,#ffebce);margin-bottom:14px}
+header a{color:#595144}header span{color:#8c301e;font-weight:700}
+main{position:relative;isolation:isolate;overflow:hidden;padding:clamp(16px,3vw,36px);min-height:440px;color:#ffefcf;border:5px ridge #cd9b51;border-radius:clamp(22px,6vw,66px);background:radial-gradient(ellipse at 48% 30%,#1b63a8,#103b78 52%,#081e46 94%);box-shadow:inset 0 0 0 3px #172a49,inset 0 0 55px #051d43,0 5px 16px #182c4522}
+main:before{content:"";position:absolute;inset:8px;border:1px solid #edc5817a;border-radius:inherit;pointer-events:none}
+main h2{color:#e9d2a4;font-size:14px}.bar{min-height:28px}.bar span{color:#ffde90}
+#marque{color:#ffd87d;text-shadow:0 2px #713910,0 4px #40270e,0 7px 14px #00122a;text-align:center;font:bold clamp(40px,8vw,78px)/1.2 serif;letter-spacing:.07em;margin:22px 0}
+#away{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.seat{min-width:0;text-align:center;background:linear-gradient(#153e68,#0a274a);border:1px solid #b19568;color:#fff3da;padding:9px 4px;font-size:14px;overflow-wrap:anywhere}
+.seat.acting{outline:2px solid #faca6a}
+#home,#actions{justify-content:center}#actions button{background:linear-gradient(#fff1bc,#e6b95f);color:#392511;border:1px solid #b08b49;box-shadow:0 2px 0 #6a4927;min-height:42px}#status{text-align:center}
+details{color:#3b4555;background:white;padding:12px 16px;border:1px solid #ddd5c5}
+html:not(.in-game) main h2,html:not(.in-game) #away,html:not(.in-game) #home{display:none}
+html:not(.in-game) #marque{margin:clamp(68px,13vh,136px) 0 30px}
+@media(max-width:550px){#away{grid-template-columns:repeat(3,minmax(0,1fr))}.seat{font-size:12px}header{min-height:60px}main{padding:16px}#marque{margin:14px 0;font-size:38px}}
+</style></head><body><header><a href="/">‹ 大厅</a><h1></h1><span>五人联机</span></header><main><div class="bar"><strong id="round"></strong><span id="pot"></span></div><div id="marque"></div><h2>对手</h2><div class="cards" id="away"></div><h2>我的手牌</h2><div class="cards" id="home"></div><p id="status" role="status"></p><div id="actions"></div></main><details><summary>本桌规则</summary><p id="rules"></p></details><script type="module" src="./table.js"></script></body></html>

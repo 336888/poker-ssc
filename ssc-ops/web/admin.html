@@ -1,0 +1,1180 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>飞龙娱乐 · 运营后台</title>
+<style>
+:root{
+  --blue:#2b7ff5; --blue-d:#1466d6; --blue-l:#eaf3ff;
+  --red:#ff3b30; --green:#12b76a; --orange:#ff8a00;
+  --bg:#f2f5fa; --card:#fff; --txt:#26313f; --sub:#8b98ad; --line:#eef1f6;
+  --sh:0 2px 10px rgba(43,127,245,.08);
+}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  background:var(--bg);color:var(--txt);max-width:1240px;margin:0 auto;padding-bottom:40px}
+.hd{display:flex;align-items:center;gap:14px;padding:14px 20px;background:#fff;
+  border-bottom:1px solid var(--line);position:sticky;top:0;z-index:9}
+.hd b{font-size:17px;color:var(--txt);letter-spacing:.3px}
+.hd b::before{content:"";display:inline-block;width:4px;height:16px;border-radius:2px;
+  background:linear-gradient(180deg,#4aa3ff,#1466d6);margin-right:9px;vertical-align:-2px}
+.sp{flex:1}
+.tabs{display:flex;gap:7px;padding:12px 20px;background:#fff;overflow:auto;
+  border-bottom:1px solid var(--line);scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:7px 15px;border-radius:9px;background:#f1f4f9;color:#5d6c80;cursor:pointer;
+  white-space:nowrap;font-size:13.5px;transition:.15s}
+.tab:hover{background:#e8eef8}
+.tab.on{background:linear-gradient(135deg,#4aa3ff,#1466d6);color:#fff;font-weight:600;
+  box-shadow:0 3px 10px rgba(20,102,214,.28)}
+main{padding:16px 20px 60px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px}
+.kpi{background:#fff;border-radius:14px;padding:15px 16px;box-shadow:var(--sh);
+  border-left:3px solid var(--blue)}
+.kpi .l{color:var(--sub);font-size:12px}
+.kpi .v{font-size:22px;font-weight:800;color:var(--blue);margin-top:3px;letter-spacing:.3px}
+table{width:100%;border-collapse:separate;border-spacing:0;background:#fff;border-radius:14px;
+  overflow:hidden;font-size:13px;box-shadow:var(--sh)}
+th{background:#f7f9fc;color:#7b8ba0;text-align:left;padding:10px 12px;font-weight:600;
+  white-space:nowrap;border-bottom:1px solid var(--line)}
+td{padding:9px 12px;border-top:1px solid #f3f6fa;white-space:nowrap}
+tbody tr:hover td{background:#f8fbff}
+input,select,button{font:inherit}
+input,select{background:#f4f7fb;border:1px solid #e8eef7;color:var(--txt);border-radius:9px;
+  padding:8px 11px;outline:none}
+input:focus,select:focus{border-color:#a9cdfb;background:#fff}
+button{background:#f1f4f9;color:#41536b;border:0;border-radius:9px;padding:8px 15px;
+  cursor:pointer;transition:transform .1s,filter .1s;font-weight:600}
+button:active{transform:scale(.96);filter:brightness(.96)}
+button.p{background:linear-gradient(135deg,#4aa3ff,#1466d6);color:#fff;
+  box-shadow:0 3px 10px rgba(20,102,214,.26)}
+button.d{background:linear-gradient(135deg,#ff6b5a,#e6312a);color:#fff;
+  box-shadow:0 3px 10px rgba(230,49,42,.22)}
+button.g{background:linear-gradient(135deg,#2ed48a,#12b76a);color:#fff;
+  box-shadow:0 3px 10px rgba(18,183,106,.22)}
+.box{background:#fff;border-radius:14px;padding:16px 18px;margin-bottom:16px;box-shadow:var(--sh)}
+.box h3{margin:0 0 13px;font-size:15px;color:var(--txt);display:flex;align-items:center;gap:8px}
+.box h3::before{content:"";width:3px;height:14px;border-radius:2px;
+  background:linear-gradient(180deg,#4aa3ff,#1466d6)}
+.row{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:9px}
+.lbl{color:var(--sub);font-size:12px}
+.pre{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#33455c;white-space:pre-wrap;
+  background:#f7f9fc;border-radius:10px;padding:12px;font-size:12.5px;line-height:1.7}
+.mask{position:fixed;inset:0;background:rgba(20,30,45,.45);display:none;align-items:center;
+  justify-content:center;z-index:99;backdrop-filter:blur(2px)}
+.mask.on{display:flex}
+.modal{background:#fff;padding:24px;border-radius:18px;width:360px;box-shadow:0 20px 50px rgba(20,40,70,.22)}
+.modal h3{margin-top:0;font-size:16px}
+.modal input{width:100%;margin-bottom:12px}
+textarea{background:#f7f9fc!important;border:1px solid #e8eef7!important;border-radius:10px!important;
+  color:#33455c!important;font-family:ui-monospace,monospace!important;outline:none}
+textarea:focus{border-color:#a9cdfb!important;background:#fff!important}
+</style>
+<style id="scope-style">
+.scopebar{display:flex;gap:6px}
+.scopebar button{
+  padding:5px 14px;
+  border-radius:8px;
+  border:1px solid #e2e9f5;
+  background:#fff;
+  color:#5a6b8a;
+  font-size:12.5px;
+  font-weight:700;
+  cursor:pointer;
+  transition:all .15s;
+}
+.scopebar button:hover{background:#f4f7ff;border-color:#cfdcf0}
+.scopebar button.on{
+  background:linear-gradient(135deg,#5b6fa8,#414a65);
+  color:#fff;
+  border-color:transparent;
+  box-shadow:0 2px 8px rgba(65,74,101,.22);
+}
+</style>
+</head><body>
+<div class="hd"><b>飞龙娱乐 · 运营后台</b><div class="sp"></div>
+<span class="lbl" id="st">未登录</span><button id="hdBtn" onclick="openLogin()">登录</button></div>
+<div style="display:flex;align-items:center;gap:10px;margin:0 0 12px;padding:10px 14px;background:#fff;border-radius:10px;border:1px solid #e6ecf6">
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#5b6fa8" stroke-width="1.9" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+  <span style="font-size:13px;font-weight:700;color:#2b3d5c">数据范围</span>
+  <div class="scopebar" id="scopeBar">
+    <button data-scope="all" class="on">全部</button>
+    <button data-scope="real">真人</button>
+    <button data-scope="bot">机器人</button>
+  </div>
+  <div style="flex:1"></div>
+  <span id="scopeHint" style="font-size:11.5px;color:#8b9ab0"></span>
+</div>
+<div class="tabs" id="tabs"></div>
+<main id="main"></main>
+<div class="mask" id="mask"><div class="modal"><h3 style="margin-top:0">管理员登录</h3>
+<input id="ap" type="password" placeholder="管理密码">
+<div style="display:flex;gap:8px;margin-bottom:12px">
+  <input id="ac" placeholder="验证码" maxlength="4" style="flex:1;margin:0;letter-spacing:3px;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+  <img id="acap" onclick="refreshCAP()" title="点击换一张" alt="验证码"
+    onerror="this.style.display='none';document.getElementById('acapErr').style.display='flex'"
+    onload="this.style.display='block';document.getElementById('acapErr').style.display='none'"
+    style="width:118px;height:40px;border-radius:9px;cursor:pointer;border:1px solid #e8eef7;background:#f7f9fc;object-fit:contain">
+  <div id="acapErr" onclick="refreshCAP()"
+    style="display:none;width:118px;height:40px;border-radius:9px;cursor:pointer;
+    border:1px dashed #d6dfec;background:#f7f9fc;color:#8b98ad;font-size:12px;
+    align-items:center;justify-content:center">点我刷新</div>
+</div>
+<button class="p" style="width:100%;padding:11px 0" onclick="doLogin()">进入</button></div></div>
+
+<script>
+// 数据范围切换
+document.addEventListener('DOMContentLoaded', function(){
+  const bar = document.getElementById('scopeBar');
+  if(bar){
+    bar.querySelectorAll('button').forEach(b=>{
+      b.onclick = () => setScope(b.dataset.scope);
+    });
+    bar.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.scope === ADMIN_SCOPE));
+  }
+  const h = document.getElementById('scopeHint');
+  if(h) h.textContent = ADMIN_SCOPE === 'real' ? '只看真人玩家数据' : ADMIN_SCOPE === 'bot' ? '只看机器人数据' : '全部玩家（含机器人）';
+});
+
+const $=id=>document.getElementById(id);
+let T=localStorage.atoken||'', TAB='report', LOTS={}, CAPID='';
+const H={Authorization:'Bearer '+T,'Content-Type':'application/json'};
+async function api(p,b,m){
+  // 自动给后台查询接口带上数据范围
+  try{
+    if(p.indexOf('/api/admin/') === 0
+       && p.indexOf('/login') < 0
+       && p.indexOf('/confirm') < 0
+       && p.indexOf('/delete') < 0
+       && p.indexOf('/adjust') < 0
+       && p.indexOf('/reset') < 0
+       && p.indexOf('/note') < 0
+       && p.indexOf('/ctrl') < 0
+       && p.indexOf('scope=') < 0){
+      const sc = localStorage.getItem('adminScope');
+      if(sc && sc !== 'all'){
+        p += (p.indexOf('?') >= 0 ? '&' : '?') + 'scope=' + sc;
+      }
+    }
+  }catch(e){}
+  const h={'Content-Type':'application/json'};if(T)h.Authorization='Bearer '+T;
+  const r=await fetch(p,{method:m||(b?'POST':'GET'),headers:h,body:b?JSON.stringify(b):undefined});
+  const j=await r.json();
+  if(j.code!==0)throw new Error(j.msg);
+  return j.data;
+}
+function openLogin(){$('mask').classList.add('on'); refreshCAP();}
+async function refreshCAP(){
+  const im=document.getElementById('acap'), er=document.getElementById('acapErr');
+  try{
+    const r=await fetch('/api/captcha'); const j=await r.json();
+    if(j.code!==0) throw new Error(j.msg||'获取失败');
+    CAPID=j.data.id;
+    if(im){ im.src=j.data.img; im.style.display='block'; }
+    if(er) er.style.display='none';
+  }catch(e){
+    if(im) im.style.display='none';
+    if(er) er.style.display='flex';
+  }
+}
+async function doLogin(){
+  const c=(document.getElementById('ac')||{}).value||'';
+  if(String(c).trim().length<4){ alert('请输入验证码'); return; }
+  try{
+    const d=await api('/api/admin/login',{pwd:$('ap').value,captcha_id:CAPID,captcha_code:String(c).trim()});
+    T=d.token;localStorage.atoken=T;$('mask').classList.remove('on');$('st').textContent='已登录';
+    boot();
+  }catch(e){alert(e.message); refreshCAP(); if(document.getElementById('ac'))document.getElementById('ac').value='';}
+}
+let ADMIN_SCOPE = localStorage.getItem('adminScope') || 'all';
+function scopeQS(){
+  return (ADMIN_SCOPE && ADMIN_SCOPE !== 'all') ? ('scope=' + ADMIN_SCOPE) : '';
+}
+function withScope(url){
+  const q = scopeQS();
+  if(!q) return url;
+  return url + (url.indexOf('?') >= 0 ? '&' : '?') + q;
+}
+function setScope(v){
+  ADMIN_SCOPE = v;
+  localStorage.setItem('adminScope', v);
+  document.querySelectorAll('#scopeBar button').forEach(function(b){
+    b.classList.toggle('on', b.dataset.scope === v);
+  });
+  const h = document.getElementById('scopeHint');
+  if(h) h.textContent = v === 'real' ? '只看真人玩家数据' : v === 'bot' ? '只看机器人数据' : '全部玩家（含机器人）';
+  try { go(TAB); } catch(e) {}
+}
+const TABS={report:'数据看板',draw:'开奖管理',src:'开奖源',bot:'机器人',poker:'牌局',
+  ctrl:'会员控制',users:'会员',pay:'充值订单',bets:'注单',agent:'代理',wd:'提现审核',rank:'连中榜',
+  risk:'风控',odds:'赔率配置'};
+function renderTabs(){
+  $('tabs').innerHTML=Object.entries(TABS).map(([k,v])=>
+    `<div class="tab ${k===TAB?'on':''}" onclick="go('${k}')">${v}</div>`).join('');
+}
+function go(k){TAB=k;renderTabs();render();}
+
+async function boot(){
+  $('st').textContent=T?'已登录':'未登录';
+  const hb=$('hdBtn');
+  if(T && hb){
+    hb.textContent='退出登录';
+    hb.onclick=async ()=>{
+      try{ await fetch('/api/logout',{method:'POST',headers:{'Content-Type':'application/json',
+             'Authorization':'Bearer '+T},body:'{}'}); }catch(e){}
+      localStorage.removeItem('atoken'); T=''; $('st').textContent='未登录';
+      hb.textContent='登录'; hb.onclick=openLogin;
+      $('main').innerHTML='<div class="box"><h3>已退出</h3><div class="lbl">点右上角重新登录</div></div>';
+      renderTabs(); openLogin();
+    };
+  }
+  try{LOTS=Object.fromEntries((await api('/api/lots')).map(l=>[l.lot,l]));}catch(e){}
+  renderTabs();render();
+  setInterval(()=>{if(TAB==='report')render()},20000);
+}
+
+async function render(){
+  const m=$('main');
+  try{
+    if(TAB==='report'){
+      const r=await api('/api/admin/report');
+      m.innerHTML=`<div class="kpis">
+        <div class="kpi"><div class="l">今日投注</div><div class="v">￥${r.today.bet_amount}</div></div>
+        <div class="kpi"><div class="l">今日派彩</div><div class="v">￥${r.today.payout}</div></div>
+        <div class="kpi"><div class="l">今日盈亏</div><div class="v" style="color:${r.today.profit>=0?'#12b76a':'#e6312a'}">￥${r.today.profit}</div></div>
+        <div class="kpi"><div class="l">今日注单</div><div class="v">${r.today.bets}</div></div>
+        <div class="kpi"><div class="l">今日新会员</div><div class="v">${r.today.new_users}</div></div>
+        <div class="kpi"><div class="l">总会员</div><div class="v">${r.total_users}</div></div>
+        <div class="kpi"><div class="l">会员总余额</div><div class="v">￥${r.user_balance}</div></div>
+        <div class="kpi"><div class="l">待审提现</div><div class="v">${r.pending_withdraw.count} / ￥${r.pending_withdraw.amount}</div></div>
+      </div>
+      <div class="box" style="margin-top:16px"><h3>今日风控命中</h3>
+        ${r.risk.length?r.risk.map(x=>`<div class="pre">${x.kind} × ${x.n}</div>`).join(''):'<span class="lbl">无</span>'}</div>`;
+
+    }else if(TAB==='draw'){
+      m.innerHTML=`<div class="box"><h3>预设开奖（可控盘）</h3>
+        <div class="row">
+          <select id="dlot">${Object.entries(LOTS).map(([k,v])=>`<option value="${k}">${v.name}</option>`).join('')}</select>
+          <input id="diss" placeholder="期号，留空=自动取当前期" style="width:220px">
+          <input id="dnums" placeholder="开奖号码 5 位，如 78319" style="width:200px">
+          <button class="p" onclick="doPreset()">预设</button>
+          <button class="g" onclick="doDraw()">立即开奖</button>
+        </div>
+        <div class="lbl">预设后由定时器到点开奖即生效；立即开奖会按预设号结算，无预设则随机。</div>
+      </div>
+      <div class="box"><h3>最近开奖</h3><div id="drawList" class="pre">加载中…</div></div>`;
+      loadDraws();
+
+    }else if(TAB==='users'){
+      const ds=await api('/api/admin/users?n=100');
+      m.innerHTML=`<div class="box"><div class="row" style="align-items:center;margin-bottom:10px">
+        <h3 style="margin:0">会员（最近 100）</h3><span style="flex:1"></span>
+        <input id="memSearch" placeholder="输入账号查找" style="width:150px;margin:0">
+        <button class="p sm" onclick="searchMember()">查找</button>
+        <input id="memNoteFilter" placeholder="备注筛选" style="width:110px;margin:0">
+        <button class="sm" onclick="filterByNote()">筛选</button>
+        <button class="sm" onclick="exportMembers()">导出 CSV</button>
+      </div><table>
+        <tr><th>账号</th><th>VIP</th><th>余额</th><th>冻结</th><th>代理</th><th>状态</th><th>注册IP</th><th>注册时间</th><th>操作</th></tr>
+        ${ds.map(u=>`<tr><td>${u.uid}</td>
+          <td>${(u.vip||0)>0?`<b style="color:#ff8a00">VIP${u.vip}</b>`:'<span class="lbl">-</span>'}</td>
+          <td>${Number(u.balance).toFixed(2)}</td>
+          <td>${Number(u.frozen).toFixed(2)}</td><td>${u.agent||'-'}</td>
+          <td>${u.status===1?'正常':'冻结'}</td><td>${u.reg_ip||'-'}</td>
+          <td>${new Date(u.ctime*1000).toLocaleString()}</td>
+          <td><button onclick="togUser('${u.uid}',${u.status===1?0:1})">${u.status===1?'冻结':'解冻'}</button>
+              <button onclick="goCtrl('${u.uid}')">控制</button>
+              <button class="p" onclick="showMember('${u.uid}')">详情</button></td></tr>`).join('')}
+      </table></div>`;
+
+    }else if(TAB==='pay'){
+      const st = $('payFilter')?.value ?? '';
+      const kw = $('payUid')?.value ?? '';
+      const ds = await api('/api/admin/payments?n=100&status='+st+'&uid='+encodeURIComponent(kw));
+      const statusTxt = {0:'待支付',1:'已到账',2:'已取消'};
+      m.innerHTML=`<div class="box"><div class="row" style="align-items:center;margin-bottom:10px">
+        <h3 style="margin:0">充值订单（${ds.length}）</h3><span style="flex:1"></span>
+        <select id="payFilter" style="width:110px"><option value="">全部状态</option>
+          <option value="0">待支付</option><option value="1">已到账</option></select>
+        <input id="payUid" placeholder="账号" style="width:120px;margin:0">
+        <button class="p sm" onclick="render()">查询</button>
+        <button class="sm" onclick="showDeletedPay()">已删除</button>
+        <button class="sm" onclick="showPayAudit()">操作审计</button>
+      </div>
+      <table><tr><th>订单号</th><th>会员</th><th>金额</th><th>渠道</th><th>状态</th><th>创建时间</th><th>到账时间</th><th>操作</th></tr>
+        ${ds.length?ds.map(p=>`<tr>
+          <td class="lbl">${p.order_no}</td>
+          <td><b style="color:#2b7ff5;cursor:pointer;text-decoration:underline" onclick="showMember('${p.uid}')">${p.uid}</b></td>
+          <td style="color:#12b76a;font-weight:700">${p.amount.toFixed(2)}</td>
+          <td class="lbl">${p.channel||'-'}</td>
+          <td>${p.status===1?'<span style="color:#12b76a">已到账</span>':p.status===0?'<span style="color:#c77900">待支付</span>':'<span class="lbl">已取消</span>'}</td>
+          <td class="lbl">${new Date(p.ctime*1000).toLocaleString('zh-CN')}</td>
+          <td class="lbl">${p.ptime?new Date(p.ptime*1000).toLocaleString('zh-CN'):'-'}</td>
+          <td>
+            ${p.status===0?`<button class="p sm" onclick="confirmPay('${p.order_no}')">补单</button>`:''}
+            ${p.status===1
+              ? `<button class="d sm" onclick="delPay('${p.order_no}',1)">删除+扣回</button>
+                 <button class="sm" onclick="delPay('${p.order_no}',0)">只删记录</button>`
+              : `<button class="d sm" onclick="delPay('${p.order_no}',0)">删除</button>`}
+            <button class="sm" onclick="showPayLogs('${p.order_no}')">日志</button>
+          </td></tr>`).join(''):'<tr><td colspan=8 class="lbl">暂无充值订单</td></tr>'}
+      </table></div>`;
+
+    }else if(TAB==='bets'){
+      const ds=await api(withScope('/api/admin/bets?n=100'));
+      m.innerHTML=`<div class="box"><h3>注单（最近 100）</h3><table>
+        <tr><th>订单号</th><th>会员</th><th>彩种/期号</th><th>玩法</th><th>号码</th><th>注数</th>
+        <th>金额</th><th>派彩</th><th>状态</th></tr>
+        ${ds.map(b=>`<tr><td>${b.order_no}</td><td>${b.uid}</td><td>${b.lot} ${b.issue}</td>
+          <td>${b.play}${b.extra?'/'+b.extra:''}</td><td>${fmtCodes(b.codes)}</td><td>${b.bets_count}</td>
+          <td>${Number(b.amount).toFixed(2)}</td><td style="color:${b.win>0?'#12b76a':'#8b98ad'}">${Number(b.win).toFixed(2)}</td>
+          <td>${b.status===0?'待开':b.status===1?'未中':'中奖'}</td></tr>`).join('')}
+      </table></div>`;
+
+    }else if(TAB==='agent'){
+      const ds=await api('/api/admin/agents');
+      m.innerHTML=`<div class="box"><h3>新建代理</h3><div class="row">
+        <input id="acode" placeholder="代理编号（同时是登录账号）">
+        <input id="aname" placeholder="名称">
+        <input id="arate" type="number" step="0.001" value="0.012" style="width:110px" placeholder="返点">
+        <input id="aparent" placeholder="上级代理编号（选填）">
+        <button class="p" onclick="newAgent()">创建</button></div>
+        <div class="lbl">默认密码 agent123456，登录后可在前台看到返点余额</div></div>
+      <div class="box"><h3>代理列表</h3><table>
+        <tr><th>编号</th><th>名称</th><th>返点</th><th>上级</th><th>层级</th><th>创建时间</th></tr>
+        ${ds.map(a=>`<tr><td>${a.code}</td><td>${a.name||'-'}</td><td>${(a.rate*100).toFixed(2)}%</td>
+          <td>${a.parent||'-'}</td><td>L${a.level}</td><td>${new Date(a.ctime*1000).toLocaleString()}</td></tr>`).join('')}
+      </table></div>`;
+
+    }else if(TAB==='wd'){
+      const ds=await api('/api/admin/withdraws?status=0');
+      m.innerHTML=`<div class="box"><h3>待审提现（${ds.length}）</h3><table>
+        <tr><th>ID</th><th>会员</th><th>申请</th><th>手续费</th><th>实付</th><th>收款信息</th><th>时间</th><th>操作</th></tr>
+        ${ds.length?ds.map(w=>`<tr><td>${w.id}</td><td>${w.uid}</td><td>${Number(w.amount).toFixed(2)}</td>
+          <td>${Number(w.fee).toFixed(2)}</td><td>${Number(w.actual).toFixed(2)}</td><td>${w.bank}</td>
+          <td>${new Date(w.ctime*1000).toLocaleString()}</td>
+          <td><button class="g" onclick="rw(${w.id},1)">通过</button>
+              <button class="d" onclick="rw(${w.id},0)">驳回</button></td></tr>`).join('')
+        :'<tr><td colspan=8 class="lbl">暂无待审</td></tr>'}
+      </table></div>`;
+
+    }else if(TAB==='bot'){
+      const d = await api('/api/admin/bots');
+      const lotOpts = Object.entries(LOTS).map(([k,v])=>`<option value="${k}">${v.name}</option>`).join('');
+      m.innerHTML=`<div class="box"><h3>批量造机器人（模拟真人）</h3>
+        <div class="row">
+          <input id="bN" type="number" value="10" style="width:80px" placeholder="数量">
+          <span class="lbl">个</span>
+          <input id="bMin" type="number" value="10" style="width:90px" placeholder="最小额">～
+          <input id="bMax" type="number" value="200" style="width:90px" placeholder="最大额">
+          <input id="bPace" type="number" value="90" style="width:90px" placeholder="节奏秒">
+          <span class="lbl">平均每注间隔</span>
+          <button class="p" onclick="mkBots()">生成</button>
+        </div>
+        <div class="row">
+          <span class="lbl">玩耍彩种：</span>
+          ${Object.entries(LOTS).map(([k,v])=>`<label class="lbl" style="margin-right:10px">
+            <input type="checkbox" class="blot" value="${k}" ${['ffssc','xamssc','wfssc'].includes(k)?'checked':''}> ${v.name}</label>`).join('')}
+        </div>
+        <div class="lbl">机器人账号是 2-3 个字母+数字的组合，和真人注册的号混在一起，前端看不出区别。
+          投注金额走对数分布（多数小额、偶尔大额），有 15% 概率"走开一会儿"不下注。</div>
+      </div>
+      <div class="box"><h3>机器人控制（${d.stat.total} 个，启用 ${d.stat.enabled}，累计 ${d.stat.bets} 注 / ￥${d.stat.wager}）</h3>
+        <div class="row"><button class="p" onclick="runBots()">立即触发一轮</button>
+          <button onclick="render()">刷新</button></div>
+        <table><tr><th>账号</th><th>余额</th><th>下注</th><th>流水</th><th>节奏</th><th>状态</th><th>操作</th></tr>
+        ${d.list.length?d.list.map(b=>`<tr>
+          <td><b>${b.uid}</b></td>
+          <td>${Number(b.balance||0).toFixed(0)}</td>
+          <td>${b.bets}</td><td>${Number(b.wager||0).toFixed(0)}</td>
+          <td>${b.pace}s</td>
+          <td>${b.enabled?'<span style="color:#12b76a">运行</span>':'<span style="color:#8b98ad">暂停</span>'}</td>
+          <td><button onclick="togBot('${b.uid}',${b.enabled?0:1})">${b.enabled?'暂停':'启动'}</button>
+              <button onclick="rechargeBot('${b.uid}')">补币</button>
+              <button class="d" onclick="delBot('${b.uid}')">删除</button></td></tr>`).join('')
+        :'<tr><td colspan=7 class="lbl">还没有机器人，上面填数量点"生成"</td></tr>'}
+        </table></div>`;
+
+    }else if(TAB==='poker'){
+      const [rooms, hist, st, pnlSummary] = await Promise.all([
+        api('/api/admin/poker/rooms'),
+        api('/api/admin/poker/history?n=60'),
+        api('/api/admin/poker/stat'),
+        api('/api/admin/poker/pnl?n=200')
+      ]);
+      const stTag = stt => stt==='playing' ? '<span style="color:#12b76a">进行中</span>'
+                        : stt==='waiting' ? '<span style="color:#2b7ff5">等待中</span>'
+                        : '<span class="lbl">'+stt+'</span>';
+      let cfg = {};
+      try{ cfg = await api('/api/admin/df/conf'); }catch(e){}
+      const br = Number((cfg.poker_bot_rate||{}).v || 0.63);
+      const fee = Number((cfg.poker_fee||{}).v || 1);
+      m.innerHTML=`<div class="box"><h3>牌局参数</h3>
+        <div class="row" style="align-items:center;gap:14px">
+          <span class="lbl">棋牌默认目标胜率</span>
+          <input id="botRateSlider" type="range" min="50" max="75" step="1" value="${Math.round(br*100)}"
+            style="flex:1;max-width:320px" oninput="document.getElementById('botRateV').textContent=this.value+'%'">
+          <b id="botRateV" style="min-width:52px;color:#2b7ff5">${Math.round(br*100)}%</b>
+          <span class="lbl">中途退出房间费</span>
+          <input id="pokerFee" type="number" value="${fee}" min="0" max="100" style="width:80px"> <span class="lbl">元</span>
+          <button class="p" onclick="savePokerCfg()">保存</button>
+        </div>
+        <div class="row" style="align-items:center;gap:14px;margin-top:10px">
+          <span class="lbl">每秒消息上限</span>
+          <input id="pokerMsgRate" type="number" value="${cfg.poker_msg_rate?.v||30}" min="5" max="200" style="width:80px">
+          <span class="lbl">最小操作间隔</span>
+          <input id="pokerActMs" type="number" value="${cfg.poker_act_ms?.v||250}" min="0" max="5000" style="width:80px"> <span class="lbl">毫秒</span>
+          <span class="lbl">名字池大小</span>
+          <input id="pokerNamePool" type="number" value="${cfg.poker_name_pool?.v||200}" min="10" max="500" style="width:80px">
+          <span class="lbl">准入最低余额</span>
+          <input id="pokerMinBal" type="number" value="${cfg.poker_min_balance?.v||50}" min="0" max="10000" style="width:80px"> <span class="lbl">元</span>
+          <span class="lbl">同机多开检测</span>
+          <select id="pokerSameDev" style="width:90px">
+            <option value="1" ${(cfg.poker_same_dev?.v||'1')==='1'?'selected':''}>开启</option>
+            <option value="0" ${(cfg.poker_same_dev?.v||'1')==='0'?'selected':''}>关闭</option>
+          </select>
+        </div>
+        <div class="lbl" style="margin-top:6px">默认参数约 60 秒同步。独立设置请进入 <a href="/poker/#/admin">棋牌后台 → 机器人设置</a>。</div>
+      </div>
+      <div class="lbl" style="margin-bottom:8px">⏱ 每 30 秒自动刷新 · 异常盈亏（≥500 元）标红</div>
+      <div class="box"><h3>首页内容</h3>
+        <div class="row" style="align-items:center;margin-bottom:8px">
+          <span class="lbl" style="width:80px">滚动公告</span>
+          <input id="homeNotice" placeholder="首页顶部滚动显示的公告" style="flex:1;margin:0">
+          <button class="p sm" onclick="saveHomeNotice()">保存</button>
+        </div>
+        <div class="row" style="align-items:flex-start">
+          <span class="lbl" style="width:80px;padding-top:6px">轮播图</span>
+          <textarea id="homeBanners" placeholder='留空使用默认 4 张。自定义格式：[{"t":"标题","s":"副标题","c":"#ff5e7d,#ff2d55","ico":"🎁"}]' style="flex:1;height:80px;margin:0"></textarea>
+          <button class="p sm" onclick="saveHomeBanners()">保存</button>
+        </div>
+        <div class="lbl" style="margin-top:6px">c 是渐变色（起,止），ico 是 emoji 图标</div>
+      </div>
+      <div class="box"><h3>牌局概览</h3>
+        <div class="row" style="gap:24px">
+          <div><div class="lbl">房间总数</div><div style="font-size:22px;font-weight:800">${st.rooms}</div></div>
+          <div><div class="lbl">进行中</div><div style="font-size:22px;font-weight:800;color:#12b76a">${st.playing}</div></div>
+          <div><div class="lbl">历史对局</div><div style="font-size:22px;font-weight:800">${st.history}</div></div>
+          <div style="flex:1"></div>
+          <button onclick="render()">刷新</button>
+        </div>
+      </div>
+      <div class="box"><div class="row"><h3 style="margin:0">今日牌局盈亏（平台 ${pnlSummary.total>=0?'+':''}${pnlSummary.total.toFixed(2)} 元）</h3><span style="flex:1"></span><button class="sm" onclick="exportPokerPnl()">导出 CSV</button></div>
+        <table><tr><th>玩家</th><th>带入</th><th>带出</th><th>房费</th><th>净盈亏</th><th>笔数</th></tr>
+        ${pnlSummary.list.length?pnlSummary.list.map(x=>`<tr style="${Math.abs(x.pnl)>=500?'background:#fff1f0':''}">
+          <td><b style="color:#2b7ff5;cursor:pointer;text-decoration:underline" onclick="showPokerPlayer('${x.uid}')">${x.uid}</b></td>
+          <td class="lbl">${x.in.toFixed(2)}</td>
+          <td class="lbl">${x.out.toFixed(2)}</td>
+          <td class="lbl">${x.fee.toFixed(2)}</td>
+          <td style="font-weight:700;color:${x.pnl>=0?'#12b76a':'#e6413c'}">${x.pnl>=0?'+':''}${x.pnl.toFixed(2)}</td>
+          <td class="lbl">${x.count}</td></tr>`).join('')
+        :'<tr><td colspan=6 class="lbl">今日暂无牌局流水</td></tr>'}
+        </table></div>
+      <div class="box"><h3>房间列表（${rooms.length}）</h3>
+        <div class="row" style="margin-bottom:6px"><button class="sm" onclick="toggleAllRooms()">全选/取消</button>
+        <button class="d sm" onclick="batchKick()">批量解散已选</button></div>
+        <table><tr><th style="width:34px"></th><th>房间码</th><th>玩法</th><th>状态</th><th>玩家</th><th>真人</th><th>操作</th></tr>
+        ${rooms.length?rooms.map(r=>`<tr>
+          <td><input type="checkbox" class="roomck" value="${r.code}"></td>
+          <td><b style="font-family:monospace">${r.code}</b></td>
+          <td>${r.mode==='doudizhu'?'斗地主':'跑得快'}</td>
+          <td>${stTag(r.status)}</td>
+          <td>${(r.names||[]).join('、') || '—'}</td>
+          <td>${r.humans??'—'} / ${r.count??'—'}</td>
+          <td><button class="d" onclick="kickRoom('${r.code}')">解散</button></td></tr>`).join('')
+        :'<tr><td colspan=6 class="lbl">暂无房间</td></tr>'}
+        </table></div>
+      <div class="box"><div class="row"><h3 style="margin:0">对局历史（最近 ${hist.length} 局）</h3><span style="flex:1"></span><button class="sm" onclick="exportPokerHist()">导出 CSV</button></div>
+        <div class="row" style="margin-bottom:8px"><button class="d" onclick="clearPokerHist()">清空历史</button></div>
+        <table><tr><th>房间</th><th>玩法</th><th>局数</th><th>玩家</th><th>名次</th><th>结束时间</th></tr>
+        ${hist.length?hist.map(h=>`<tr>
+          <td style="font-family:monospace">${h.room}</td>
+          <td>${h.mode==='doudizhu'?'斗地主':'跑得快'}</td>
+          <td>第 ${h.round} 局</td>
+          <td>${(h.players||[]).join('、')}</td>
+          <td>${(h.settlement||[]).map(s=>`${s.rank}.${s.name}`).join(' ')}</td>
+          <td class="lbl">${h.endedAt? new Date(h.endedAt).toLocaleString('zh-CN'):'—'}</td></tr>`).join('')
+        :'<tr><td colspan=6 class="lbl">暂无记录</td></tr>'}
+        </table></div>`;
+
+      clearInterval(window.pokerAutoTimer);
+      window.pokerAutoTimer = setInterval(()=>{ if(TAB==='poker') render(); }, 30000);
+
+    }else if(TAB==='src'){
+      const cl = await api('/api/admin/collector');
+      const lv = await api('/api/admin/live');
+      const lotOpts = Object.entries(LOTS).map(([k,v])=>`<option value="${k}">${v.name}</option>`).join('');
+      const cur = cl['xamssc'] || {};
+      m.innerHTML=`<div class="box"><h3>官方开奖采集（配置后该彩种不再本地随机开奖）</h3>
+        <div class="row">
+          <select id="cLot">${lotOpts}</select>
+          <input id="cUrl" placeholder="数据源 URL，例如 https://xxx/api/kj?lot=xam" style="flex:1;min-width:280px" value="${cur.url||''}">
+          <label class="lbl"><input type="checkbox" id="cEn" ${cur.enabled?'checked':''}> 启用</label>
+        </div>
+        <div class="row">
+          <input id="cList" placeholder="列表路径 list（如 data.list，留空=根）" style="width:220px" value="${(cur.mapping||{}).list||''}">
+          <input id="cIssue" placeholder="期号字段" style="width:140px" value="${(cur.mapping||{}).issue||'issue'}">
+          <input id="cNum" placeholder="号码字段" style="width:140px" value="${(cur.mapping||{}).numbers||'code'}">
+          <input id="cTime" placeholder="时间字段(可选)" style="width:140px" value="${(cur.mapping||{}).time||''}">
+        </div>
+        <div class="row">
+          <input id="cPre" placeholder="期号前缀(可选)" style="width:150px" value="${cur.issue_prefix||''}">
+          <input id="cSep" placeholder="号码分隔符" style="width:110px" value="${cur.number_sep||','}">
+          <button class="p" onclick="saveCollector()">保存</button>
+          <button onclick="dryCollector()">测试拉取</button>
+          <button class="g" onclick="runCollector()">立即采集结算</button>
+        </div>
+        <div class="lbl">号码字段支持 "1,2,3,4,5" 或 "12345" 或数组 [1,2,3,4,5]，非数字会自动剔除</div>
+        <div class="pre" id="cOut" style="margin-top:10px;min-height:40px">测试结果会显示在这里</div>
+      </div>
+      <div class="box"><h3>手动录入官方开奖</h3>
+        <div class="row">
+          <select id="oLot">${lotOpts}</select>
+          <input id="oIssue" placeholder="期号" style="width:200px">
+          <input id="oNum" placeholder="开奖号码 如 12345" style="width:200px">
+          <button class="p" onclick="drawOfficial()">录入并结算</button>
+        </div>
+        <div class="lbl">这条记录会标记 source=official，玩家端显示"官方"</div>
+      </div>
+      <div class="box"><h3>开奖直播源</h3>
+        <div class="row">
+          <select id="lLot">${lotOpts}</select>
+          <input id="lUrl" placeholder="m3u8 / mp4 / 直播页 iframe 地址" style="flex:1;min-width:300px" value="${(lv['xamssc']||{}).url||''}">
+          <input id="lTitle" placeholder="标题（如 新澳门开奖直播）" style="width:220px" value="${(lv['xamssc']||{}).title||''}">
+          <button class="p" onclick="saveLive()">保存</button>
+        </div>
+        <div class="lbl">填 .m3u8/.mp4 会用原生播放器；填网页地址会用 iframe 嵌入</div>
+      </div>
+      <div class="box"><h3>当前已启用采集的彩种</h3>
+        <div class="pre">${Object.keys(cl).length?Object.entries(cl).map(([k,v])=>`${k}: ${v.enabled?'启用':'停用'}  ${v.url||''}`).join('\n'):'（尚未配置）'}</div>
+      </div>`;
+
+    }else if(TAB==='ctrl'){
+      const d=await api('/api/admin/ctrl');
+      const MODES={chase:['追杀','#e6312a'],favor:['放水','#12b76a'],normal:['正常','#5d6c80']};
+      m.innerHTML=`<div class="box"><h3>设置玩家控制</h3>
+        <div class="row">
+          <input id="cu" placeholder="玩家账号" style="width:150px">
+          <select id="cm"><option value="chase">追杀（让他不中）</option>
+            <option value="favor">放水（让他中）</option>
+            <option value="normal">恢复正常</option></select>
+          <input id="cr" type="number" value="0" min="0" max="100" style="width:90px" placeholder="胜率%">
+          <input id="cn" placeholder="备注" style="width:150px">
+          <button class="p" onclick="setCtrl()">保存</button>
+        </div>
+        <div class="lbl">胜率 = 允许他本期中奖的概率。追杀填 0（必不中），放水填 100（必中），要控五成就填 50。
+          原理：开奖前反推号码，不改注单，玩家看到的是"运气不好"，后台查不到任何异常注单。</div>
+      </div>
+      <div class="box"><h3>已控制玩家（${d.list.length}）</h3>
+        <table><tr><th>账号</th><th>模式</th><th>胜率</th><th>余额</th><th>备注</th>
+          <th>更新时间</th><th>操作</th></tr>
+        ${d.list.length?d.list.map(r=>`<tr>
+          <td><b>${r.uid}</b></td>
+          <td style="color:${(MODES[r.mode]||['',''])[1]}">${(MODES[r.mode]||[r.mode])[0]}</td>
+          <td>${Number(r.rate).toFixed(0)}%</td>
+          <td>${Number(r.balance||0).toFixed(2)}</td>
+          <td class="lbl">${r.note||'-'}</td>
+          <td class="lbl">${new Date((r.utime||r.ctime)*1000).toLocaleString()}</td>
+          <td><button class="d" onclick="delCtrl('${r.uid}')">解除</button></td></tr>`).join('')
+        :'<tr><td colspan=7 class="lbl">暂无，所有玩家正常开奖</td></tr>'}
+        </table></div>
+      <div class="box"><h3>统计</h3>
+        <div class="pre">${d.stat.length?d.stat.map(x=>`${(MODES[x.mode]||[x.mode])[0]}：${x.n} 人`).join('   '):'无控制'}</div>
+        <div class="lbl" style="margin-top:8px">注意：同一期多个玩家条件冲突时，追杀优先，放水自动让路。</div></div>
+      <div class="box"><h3>控制操作记录（最近 ${(await api('/api/admin/ctrl/logs?n=50')).length} 条）</h3>
+        <table><tr><th>账号</th><th>模式</th><th>胜率</th><th>备注</th><th>设置时间</th></tr>
+        ${(await api('/api/admin/ctrl/logs?n=50')).map(l=>`<tr>
+          <td><b>${l.uid}</b></td>
+          <td><span style="color:${l.mode==='chase'?'#e6312a':'#12b76a'}">${l.mode==='chase'?'追杀':l.mode==='favor'?'放水':'正常'}</span></td>
+          <td>${l.rate}%</td><td class="lbl">${l.note||'-'}</td>
+          <td class="lbl">${new Date(l.utime*1000).toLocaleString('zh-CN')}</td></tr>`).join('')}
+        </table></div>`;
+      // 从会员页跳过来时自动填账号
+      if(_pendingCtrlUid){
+        const el = $('cu');
+        if(el){ el.value = _pendingCtrlUid; el.focus(); }
+        _pendingCtrlUid = '';
+      }
+
+    }else if(TAB==='rank'){
+      const cur=await api('/api/admin/robot_ranks');
+      m.innerHTML=`<div class="box"><h3>真人连中榜（实时计算，近 50 期）</h3>
+        <div class="row">
+          <select id="rklot">${Object.entries(LOTS).map(([k,v])=>`<option value="${k}">${v.name}</option>`).join('')}</select>
+          <select id="rkkind"><option value="streak">连中期数</option><option value="hit">命中率</option>
+            <option value="profit">盈利</option><option value="single">单注最高</option></select>
+          <button class="p" onclick="loadLiveRank()">刷新</button>
+        </div>
+        <div id="liveRank" class="pre">点刷新加载</div></div>
+      <div class="box"><h3>机器人榜单（混排进前 3 位，真实数据原样保留）</h3>
+        <div class="row"><span class="lbl">JSON 数组，字段：mask / streak / profit / played / hit / single</span></div>
+        <textarea id="robotJson" style="width:100%;height:180px">${
+          JSON.stringify(cur,null,1)}</textarea>
+        <div class="row" style="margin-top:10px">
+          <button class="p" onclick="saveRobot()">保存榜单</button>
+          <button onclick="fillDemo()">填入示例</button>
+          <button class="d" onclick="clearRobot()">清空</button></div></div>`;
+    }else if(TAB==='risk'){
+      const ds=await api('/api/admin/risk');
+      m.innerHTML=`<div class="box"><h3>风控日志</h3><table>
+        <tr><th>时间</th><th>会员</th><th>类型</th><th>详情</th></tr>
+        ${ds.map(r=>`<tr><td>${new Date(r.ctime*1000).toLocaleString()}</td><td>${r.uid}</td>
+          <td>${r.kind}</td><td style="font-family:monospace;font-size:12px">${r.detail}</td></tr>`).join('')}
+      </table></div>`;
+
+    }else if(TAB==='odds'){
+      const d=await api('/api/playtypes');
+      m.innerHTML=`<div class="box"><h3>赔率配置（保存后立即生效，重启不丢）</h3>
+        <div class="row"><button class="p" onclick="saveOdds()">保存</button>
+        <span class="lbl">键名规则：玩法名，和值用 sum:22，跨度用 span:4</span></div>
+        <textarea id="oddsJson" style="width:100%;height:320px">${
+          JSON.stringify(d.odds,null,1)}</textarea></div>`;
+    }
+  }catch(e){
+    m.innerHTML=`<div class="box"><h3>出错了</h3><div class="pre">${e.message}</div>
+      <button onclick="openLogin()">重新登录</button></div>`;
+  }
+}
+
+function fmtCodes(v){try{return JSON.parse(v).join(' ')}catch(e){return v||''}}
+async function loadDraws(){
+  try{
+    const lot=$('dlot')?$('dlot').value:'ffssc';
+    const ds=await api('/api/admin/draws?lot='+lot+'&n=20');
+    if($('drawList'))$('drawList').textContent=ds.length?ds.map(d=>
+      `${d.issue}  ${d.numbers||'—'}  ${d.status===2?'已开':'待开'}${d.preset?'  预设'+d.preset:''}`).join('\n')
+      :'暂无数据';
+  }catch(e){}
+}
+async function doPreset(){
+  const lot=$('dlot').value,issue=$('diss').value.trim()||(await api('/api/issues?lot='+lot+'&n=1'))[0].issue;
+  try{const d=await api('/api/admin/preset',{lot,issue,numbers:$('dnums').value.trim()});
+    alert('已预设：'+d.issue+' → '+d.preset);loadDraws();}catch(e){alert(e.message)}
+}
+async function doDraw(){
+  const lot=$('dlot').value,issue=$('diss').value.trim()||undefined;
+  try{const d=await api('/api/admin/draw',{lot,issue,numbers:$('dnums').value.trim()||undefined});
+    alert(`开奖 ${d.issue} → ${d.numbers}\n注单 ${d.bets||0} 笔，投注 ￥${d.total_bet||0}，派彩 ￥${d.payout||0}`);
+    loadDraws();}catch(e){alert(e.message)}
+}
+async function togUser(uid,st){
+  try{await api('/api/admin/user/status',{uid,status:st});render();}catch(e){alert(e.message)}
+}
+async function newAgent(){
+  try{const d=await api('/api/admin/agent',{code:$('acode').value.trim(),name:$('aname').value.trim(),
+    rate:Number($('arate').value),parent:$('aparent').value.trim()||null});
+    alert(`代理 ${d.agent} 已创建（L${d.level}，返点 ${(d.rate*100).toFixed(2)}%）`);render();}
+  catch(e){alert(e.message)}
+}
+async function rw(id,pass){
+  try{await api('/api/admin/withdraw/review',{id,pass:!!pass,memo:pass?'ok':'reject'});render();}
+  catch(e){alert(e.message)}
+}
+let _pendingCtrlUid = '';
+function goCtrl(uid){
+  _pendingCtrlUid = uid;
+  go('ctrl');
+}
+
+async function setCtrl(){
+  const uid=$('cu').value.trim();
+  if(!uid) return alert('填玩家账号');
+  try{
+    const d=await api('/api/admin/ctrl',{uid,mode:$('cm').value,
+      rate:Number($('cr').value),note:$('cn').value.trim()});
+    alert(`已设置：${d.uid} → ${d.mode}  胜率 ${d.rate}%`);render();
+  }catch(e){alert(e.message)}
+}
+async function delCtrl(uid){
+  if(!confirm('解除 '+uid+' 的控制？'))return;
+  try{await api('/api/admin/ctrl/delete',{uid});render();}catch(e){alert(e.message)}
+}
+
+function _cfg(){
+  const mp={list:$('cList').value.trim(),issue:$('cIssue').value.trim()||'issue',
+            numbers:$('cNum').value.trim()||'code'};
+  const t=$('cTime').value.trim(); if(t)mp.time=t;
+  return {enabled:$('cEn').checked,url:$('cUrl').value.trim(),method:'GET',timeout:12,
+          mapping:mp,issue_prefix:$('cPre').value.trim(),number_sep:$('cSep').value.trim()||','};
+}
+// CSV 导出（通用）
+function exportCsv(filename, rows){
+  const esc = (v) => `"${String(v==null?'':v).replace(/"/g,'""')}"`;
+  const csv = '\ufeff' + rows.map(r=>r.map(esc).join(',')).join('\r\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 3000);
+}
+
+async function exportAudit(){
+  try{
+    const ds = await api('/api/admin/payments/audit?n=500');
+    const actTxt = {confirm:'补单', delete:'删除', delete_refund:'删除并扣回',
+                    wd_approve:'提现通过', wd_reject:'提现驳回'};
+    const rows = [['订单号','会员','操作','金额','操作前余额','操作后余额','操作人','备注','时间']];
+    ds.forEach(d=>rows.push([d.order_no, d.uid, actTxt[d.action]||d.action,
+      d.amount.toFixed(2), d.before.toFixed(2), d.after.toFixed(2), d.operator,
+      d.memo||'', new Date(d.ctime*1000).toLocaleString('zh-CN')]));
+    exportCsv('资金操作审计_' + new Date().toISOString().slice(0,10) + '.csv', rows);
+  }catch(e){ alert(e.message); }
+}
+
+async function showPayLogs(orderNo){
+  try{
+    const ds = await api('/api/admin/payments/logs?order_no='+encodeURIComponent(orderNo));
+    const actTxt = {confirm:'补单', delete:'删除', delete_refund:'删除并扣回',
+                    wd_approve:'提现通过', wd_reject:'提现驳回'};
+    const rows = ds.map(d=>`<tr>
+      <td><b>${actTxt[d.action]||d.action}</b></td>
+      <td>${d.amount.toFixed(2)}</td>
+      <td class="lbl">${d.before.toFixed(2)} → ${d.after.toFixed(2)}</td>
+      <td class="lbl">${d.operator}</td>
+      <td class="lbl">${d.memo||''}</td>
+      <td class="lbl">${new Date(d.ctime*1000).toLocaleString('zh-CN')}</td></tr>`).join('');
+    const m = document.querySelector('#mask .modal');
+    m.style.maxHeight='70vh'; m.style.overflowY='auto';
+    m.innerHTML=`<h3>操作日志 · ${orderNo} <span style="font-size:12px;color:#8b98ad;cursor:pointer;float:right" onclick="$('mask').classList.remove('on')">✕</span></h3>
+      <table><tr><th>操作</th><th>金额</th><th>余额变化</th><th>操作人</th><th>备注</th><th>时间</th></tr>
+      ${rows||'<tr><td colspan=6 class="lbl">暂无操作记录</td></tr>'}</table>
+      <div class="mact" style="margin-top:12px"><button class="p" onclick="$('mask').classList.remove('on')">关闭</button></div>`;
+    $('mask').classList.add('on');
+  }catch(e){ alert(e.message); }
+}
+
+async function showPayAudit(){
+  try{
+    const op = $('auditOperator')?.value || '';
+    const act = $('auditAction')?.value || '';
+    const ds = await api('/api/admin/payments/audit?n=100&operator='+encodeURIComponent(op)+'&action='+encodeURIComponent(act));
+    const actTxt = {confirm:'补单', delete:'删除', delete_refund:'删除并扣回',
+                    wd_approve:'提现通过', wd_reject:'提现驳回'};
+    const rows = ds.map(d=>`<tr>
+      <td class="lbl">${d.order_no}</td><td>${d.uid}</td>
+      <td><b>${actTxt[d.action]||d.action}</b></td>
+      <td>${d.amount.toFixed(2)}</td>
+      <td class="lbl">${d.before.toFixed(2)} → ${d.after.toFixed(2)}</td>
+      <td class="lbl">${new Date(d.ctime*1000).toLocaleString('zh-CN')}</td></tr>`).join('');
+    const m = document.querySelector('#mask .modal');
+    m.style.maxHeight='75vh'; m.style.overflowY='auto';
+    m.innerHTML=`<h3>充值操作审计（最近 ${ds.length} 条） <span style="font-size:12px;color:#8b98ad;cursor:pointer;float:right" onclick="$('mask').classList.remove('on')">✕</span></h3>
+      <div class="row" style="align-items:center;gap:8px;margin-bottom:8px">
+        <input id="auditOperator" placeholder="操作人" style="width:110px;margin:0" value="${op}">
+        <select id="auditAction" style="width:130px;margin:0">
+          <option value="">全部类型</option>
+          <option value="confirm" ${act==='confirm'?'selected':''}>补单</option>
+          <option value="delete" ${act==='delete'?'selected':''}>删除</option>
+          <option value="delete_refund" ${act==='delete_refund'?'selected':''}>删除并扣回</option>
+          <option value="wd_approve" ${act==='wd_approve'?'selected':''}>提现通过</option>
+          <option value="wd_reject" ${act==='wd_reject'?'selected':''}>提现驳回</option>
+        </select>
+        <button class="p sm" onclick="showPayAudit()">筛选</button>
+        <button class="sm" onclick="exportAudit()">导出 CSV</button>
+      </div>
+      <div class="lbl" style="margin-bottom:8px">所有资金操作记录，永久保留</div>
+      <table><tr><th>订单号</th><th>会员</th><th>操作</th><th>金额</th><th>余额变化</th><th>时间</th></tr>
+      ${rows||'<tr><td colspan=6 class="lbl">暂无操作记录</td></tr>'}</table>
+      <div class="mact" style="margin-top:12px"><button class="p" onclick="$('mask').classList.remove('on')">关闭</button></div>`;
+    $('mask').classList.add('on');
+  }catch(e){ alert(e.message); }
+}
+
+async function showDeletedPay(){
+  try{
+    const ds = await api('/api/admin/payments/deleted?n=100');
+    const rows = ds.map(d=>`<tr>
+      <td class="lbl">${d.order_no}</td><td>${d.uid}</td>
+      <td>${d.amount.toFixed(2)}</td>
+      <td>${d.status===1?'已到账':'待支付'}</td>
+      <td class="lbl">${new Date(d.deleted_at*1000).toLocaleString('zh-CN')}</td>
+      <td style="color:${d.left_days>2?'#12b76a':'#e6413c'}">${d.left_days} 天</td></tr>`).join('');
+    const m = document.querySelector('#mask .modal');
+    m.style.maxHeight='70vh'; m.style.overflowY='auto';
+    m.innerHTML=`<h3>已删除的充值订单（${ds.length}） <span style="font-size:12px;color:#8b98ad;cursor:pointer;float:right" onclick="$('mask').classList.remove('on')">✕</span></h3>
+      <div class="lbl" style="margin-bottom:8px">删除后保留 7 天，到期自动清理</div>
+      <table><tr><th>订单号</th><th>会员</th><th>金额</th><th>原状态</th><th>删除时间</th><th>剩余</th></tr>
+      ${rows||'<tr><td colspan=6 class="lbl">暂无已删除记录</td></tr>'}</table>
+      <div class="mact" style="margin-top:12px"><button class="p" onclick="$('mask').classList.remove('on')">关闭</button></div>`;
+    $('mask').classList.add('on');
+  }catch(e){ alert(e.message); }
+}
+
+async function loadHomeCfg(){
+  try{
+    const d = await api('/api/home/content');
+    if($('homeNotice')) $('homeNotice').value = d.notice || '';
+    if($('homeBanners')) $('homeBanners').value = d.custom ? JSON.stringify(d.banners) : '';
+  }catch(e){}
+}
+async function saveHomeNotice(){
+  try{
+    await api('/api/admin/df/conf', {k:'home_notice', v: $('homeNotice').value});
+    alert('公告已保存'); loadHomeCfg();
+  }catch(e){ alert(e.message); }
+}
+async function saveHomeBanners(){
+  const raw = ($('homeBanners').value||'').trim();
+  if(raw){
+    try{ JSON.parse(raw); }catch(e){ return alert('JSON 格式错误'); }
+  }
+  try{
+    await api('/api/admin/df/conf', {k:'home_banners', v: raw});
+    alert(raw?'轮播图已保存':'已恢复默认轮播');
+    loadHomeCfg();
+  }catch(e){ alert(e.message); }
+}
+
+async function confirmPay(orderNo){
+  if(!confirm('确认补单 ' + orderNo + '？将给会员加钱')) return;
+  try{
+    const r = await api('/api/admin/payments/confirm', {order_no: orderNo});
+    alert('补单成功：' + r.uid + ' +' + r.amount.toFixed(2) + ' 元');
+    render();
+  }catch(e){ alert(e.message); }
+}
+
+async function delPay(orderNo, refund){
+  const tip = refund
+    ? '确定删除订单 ' + orderNo + ' 并【扣回】已到账金额？'
+    : '确定删除订单 ' + orderNo + '？' + (refund===0?'\n（已到账的金额不会扣回）':'');
+  if(!confirm(tip)) return;
+  try{
+    const r = await api('/api/admin/payments?order_no='+encodeURIComponent(orderNo)+'&refund='+(refund?1:0), null, 'DELETE');
+    alert(refund ? '已删除并扣回余额' : '已删除记录');
+    render();
+  }catch(e){ alert(e.message); }
+}
+
+async function exportPokerPnl(){
+  try{
+    const d = await api('/api/admin/poker/pnl?n=500');
+    const rows = [['玩家','带入','带出','房费','净盈亏','笔数']];
+    d.list.forEach(x=>rows.push([x.uid, x.in.toFixed(2), x.out.toFixed(2), x.fee.toFixed(2), x.pnl.toFixed(2), x.count]));
+    rows.push([]);
+    rows.push(['平台合计', '', '', '', d.total.toFixed(2), '']);
+    exportCsv('牌局盈亏_' + new Date().toISOString().slice(0,10) + '.csv', rows);
+  }catch(e){ alert(e.message); }
+}
+
+async function exportPokerHist(){
+  try{
+    const d = await api('/api/admin/poker/history?n=500');
+    const rows = [['房间','玩法','局数','玩家','名次','结束时间']];
+    d.forEach(h=>rows.push([
+      h.room, h.mode==='doudizhu'?'斗地主':'跑得快', h.round,
+      (h.players||[]).join(' '),
+      (h.settlement||[]).map(s=>`${s.rank}.${s.name}`).join(' '),
+      h.endedAt ? new Date(h.endedAt).toLocaleString('zh-CN') : ''
+    ]));
+    exportCsv('对局历史_' + new Date().toISOString().slice(0,10) + '.csv', rows);
+  }catch(e){ alert(e.message); }
+}
+
+async function searchMember(){
+  const k = ($('memSearch')?.value || '').trim();
+  if(!k) return alert('请输入账号');
+  await showMember(k);
+}
+
+async function showMember(uid){
+  try{
+    const d = await api('/api/admin/member?uid='+encodeURIComponent(uid));
+    const m = document.querySelector('#mask .modal');
+    m.style.maxHeight = '78vh'; m.style.overflowY = 'auto';
+    const payRows = d.payments.slice(0,8).map(p=>`<tr>
+      <td class="lbl">${p.order_no}</td><td style="color:#12b76a">+${p.amount.toFixed(2)}</td>
+      <td class="lbl">${p.coin.toFixed(2)} U</td><td class="lbl">${p.status===1?'已到账':'待支付'}</td>
+      <td class="lbl">${new Date(p.ctime*1000).toLocaleString('zh-CN')}</td></tr>`).join('');
+    const wdRows = d.withdraws.slice(0,8).map(w=>`<tr>
+      <td class="lbl">#${w.id}</td><td style="color:#e6413c">-${w.amount.toFixed(2)}</td>
+      <td class="lbl">${w.fee.toFixed(2)}</td><td class="lbl">${['待审','通过','拒绝','已撤销'][w.status]||w.status}</td>
+      <td class="lbl">${new Date(w.ctime*1000).toLocaleString('zh-CN')}</td></tr>`).join('');
+    const flowRows = d.flows.slice(0,20).map(f=>`<tr>
+      <td>${f.kind}</td><td style="color:${f.amount>=0?'#12b76a':'#e6413c'}">${f.amount>=0?'+':''}${f.amount.toFixed(2)}</td>
+      <td class="lbl">${f.balance!=null?f.balance.toFixed(2):'-'}</td><td class="lbl">${f.memo||''}</td>
+      <td class="lbl">${new Date(f.ctime*1000).toLocaleString('zh-CN')}</td></tr>`).join('');
+    m.innerHTML=`<h3>会员详情 · ${d.uid} <span style="font-size:12px;color:#8b98ad;cursor:pointer;float:right" onclick="$('mask').classList.remove('on')">✕</span></h3>
+      <div class="box" style="margin:0 0 10px"><div class="row" style="gap:16px;justify-content:center">
+        <div style="text-align:center"><div class="lbl">中心</div><b style="font-size:15px">${d.balance.toFixed(2)}</b></div>
+        <div style="text-align:center"><div class="lbl">棋牌</div><b style="font-size:15px;color:#7c3aed">${d.poker_balance.toFixed(2)}</b></div>
+        <div style="text-align:center"><div class="lbl">彩票</div><b style="font-size:15px;color:#0f9f5f">${d.lot_balance.toFixed(2)}</b></div>
+        <div style="text-align:center"><div class="lbl">冻结</div><b style="font-size:15px">${d.frozen.toFixed(2)}</b></div>
+        <div style="text-align:center"><div class="lbl">累计投注</div><b style="font-size:15px">${d.bet_amount.toFixed(2)}</b></div>
+      </div><div class="lbl" style="text-align:center;margin-top:6px">状态 ${d.status===1?'正常':'冻结'} · 代理 ${d.agent||'-'} · 注册 ${new Date(d.ctime*1000).toLocaleDateString('zh-CN')} · IP ${d.reg_ip||'-'}</div></div>
+      <div class="lbl" style="margin:10px 0 4px">最近充值（${d.payments.length}）</div>
+      <table><tr><th>订单号</th><th>金额</th><th>到账</th><th>状态</th><th>时间</th></tr>${payRows||'<tr><td colspan=5 class="lbl">暂无充值</td></tr>'}</table>
+      <div class="lbl" style="margin:10px 0 4px">最近提现（${d.withdraws.length}）</div>
+      <table><tr><th>单号</th><th>金额</th><th>手续费</th><th>状态</th><th>时间</th></tr>${wdRows||'<tr><td colspan=5 class="lbl">暂无提现</td></tr>'}</table>
+      <div class="lbl" style="margin:10px 0 4px">最近下注（${(d.bets||[]).length}）</div>
+      <table><tr><th>订单号</th><th>彩种</th><th>期号</th><th>玩法</th><th>金额</th><th>派彩</th><th>时间</th></tr>
+      ${(d.bets||[]).length?d.bets.map(b=>`<tr><td class="lbl">${b.order_no}</td><td>${b.lot}</td>
+        <td class="lbl">${b.issue}</td><td class="lbl">${b.play||'-'}</td>
+        <td style="color:#e6413c">-${b.amount.toFixed(2)}</td>
+        <td style="color:${b.win>0?'#12b76a':'#8b98ad'}">${b.win>0?'+'+b.win.toFixed(2):'-'}</td>
+        <td class="lbl">${new Date(b.ctime*1000).toLocaleString('zh-CN')}</td></tr>`).join(''):'<tr><td colspan=7 class="lbl">暂无下注</td></tr>'}</table>
+
+      <div class="lbl" style="margin:10px 0 4px">流水明细（最近 20 笔）</div>
+      <table><tr><th>类型</th><th>金额</th><th>余额</th><th>备注</th><th>时间</th></tr>${flowRows||'<tr><td colspan=5 class="lbl">暂无流水</td></tr>'}</table>
+      <div class="box" style="margin-top:12px">
+        <div class="row" style="align-items:center;gap:8px;margin-bottom:8px">
+          <span class="lbl">VIP等级</span>
+          <select id="vipSel" style="width:140px;margin:0">
+            <option value="0">普通会员</option>
+            <option value="1">VIP1 白银</option>
+            <option value="2">VIP2 黄金</option>
+            <option value="3">VIP3 铂金</option>
+            <option value="4">VIP4 钻石</option>
+            <option value="5">VIP5 黑卡</option>
+          </select>
+          <button class="p sm" onclick="setVipLevel('${d.uid}')">设为该等级</button>
+        </div>
+        <div class="row" style="align-items:center;gap:8px;margin-bottom:8px">
+          <span class="lbl">加减余额</span>
+          <input id="adjAmt" type="number" placeholder="正数加/负数扣" style="flex:1;margin:0;max-width:130px">
+          <input id="adjMemo" placeholder="备注（选填）" style="flex:1;margin:0;max-width:150px">
+          <button class="p sm" onclick="adjustBalance('${d.uid}')">执行</button>
+        </div>
+        <div class="row" style="align-items:center;gap:8px;margin-bottom:8px">
+          <span class="lbl">备注标签</span>
+          <input id="memNote" value="${(d.note||'').replace(/"/g,'&quot;')}" placeholder="如：大客户 / 风险" style="flex:1;margin:0;max-width:220px">
+          <button class="sm" onclick="saveMemberNote('${d.uid}')">保存备注</button>
+        </div>
+        <div class="row" style="align-items:center;gap:8px">
+          <span class="lbl">重置密码</span>
+          <input id="memPwd" placeholder="新密码（8位以上含字母数字）" style="flex:1;margin:0;max-width:220px">
+          <button class="d sm" onclick="resetMemberPwd('${d.uid}')">重置</button>
+        </div>
+      </div>
+      <div class="mact" style="margin-top:14px"><button class="p" onclick="$('mask').classList.remove('on')">关闭</button></div>`;
+    $('mask').classList.add('on');
+  }catch(e){ alert(e.message); }
+}
+
+async function setVipLevel(uid){
+  const lv = Number($('vipSel')?.value || 0);
+  if(!confirm('确定把 ' + uid + ' 设为 VIP' + lv + '？')) return;
+  try{
+    await api('/api/admin/vip', {uid, level: lv});
+    alert('已设置 VIP' + lv);
+    await showMember(uid);
+  }catch(e){ alert(e.message); }
+}
+
+async function adjustBalance(uid){
+  const amt = Number($('adjAmt')?.value||0);
+  const memo = ($('adjMemo')?.value||'').trim();
+  if(!amt) return alert('请输入金额');
+  if(!confirm((amt>0?'加':'扣') + Math.abs(amt).toFixed(2) + ' 元给 ' + uid + '？')) return;
+  try{
+    const r = await api('/api/admin/adjust', {uid, amount: amt, memo: memo||'后台调整'});
+    alert('已' + (amt>0?'加':'扣') + Math.abs(amt).toFixed(2) + ' 元，当前余额 ' + r.balance.toFixed(2));
+    $('adjAmt').value=''; $('adjMemo').value='';
+    await showMember(uid);
+  }catch(e){ alert(e.message); }
+}
+
+async function filterByNote(){
+  const k = ($('memNoteFilter')?.value||'').trim();
+  if(!k) return render();
+  try{
+    const ds = await api('/api/admin/users?n=100&note='+encodeURIComponent(k));
+    const box = document.querySelector('#main .box');
+    alert('找到 ' + ds.length + ' 个备注含「' + k + '」的会员：\n' + ds.map(u=>u.uid+'（'+u.note+'）').join('\n'));
+  }catch(e){ alert(e.message); }
+}
+
+async function exportMembers(){
+  try{
+    const ds = await api('/api/admin/users?n=500');
+    const rows = [['账号','中心余额','冻结','代理','状态','注册IP','注册时间','备注']];
+    ds.forEach(u=>rows.push([u.uid, u.balance.toFixed(2), u.frozen.toFixed(2), u.agent||'',
+      u.status===1?'正常':'冻结', u.reg_ip||'', new Date(u.ctime*1000).toLocaleString('zh-CN'), u.note||'']));
+    exportCsv('会员列表_' + new Date().toISOString().slice(0,10) + '.csv', rows);
+  }catch(e){ alert(e.message); }
+}
+
+async function saveMemberNote(uid){
+  try{
+    await api('/api/admin/member/note', {uid, note: $('memNote').value});
+    alert('备注已保存');
+  }catch(e){ alert(e.message); }
+}
+
+async function resetMemberPwd(uid){
+  const pwd = ($('memPwd')?.value||'').trim();
+  if(!pwd) return alert('请输入新密码');
+  if(!confirm('确定重置 ' + uid + ' 的密码？')) return;
+  try{
+    await api('/api/admin/member/reset', {uid, pwd});
+    alert('密码已重置，请通知玩家');
+    $('memPwd').value = '';
+  }catch(e){ alert(e.message); }
+}
+
+async function showPokerPlayer(uid){
+  try{
+    const d = await api('/api/admin/poker/player?uid='+encodeURIComponent(uid));
+    // 7 天盈亏折线图
+    const vals = d.trend.map(t=>t.v);
+    const W = 360, H = 90, PAD = 10;
+    const maxAbs = Math.max(10, ...vals.map(Math.abs));
+    const stepX = (W - PAD*2) / Math.max(1, vals.length - 1);
+    const y0 = H/2;
+    const pts = vals.map((v,i)=>[PAD + i*stepX, y0 - (v/maxAbs)*(y0-6)]);
+    const path = pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+    const dots = pts.map((p,i)=>{
+      const v = vals[i];
+      return `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="2.6" fill="${v>=0?'#12b76a':'#e6413c'}"/>`;
+    }).join('');
+    const labels = d.trend.map((t,i)=>`<text x="${pts[i][0].toFixed(1)}" y="${H-1}" font-size="9" fill="#8b98ad" text-anchor="middle">${t.d.slice(3)}</text>`).join('');
+    const vals_txt = d.trend.map(t=>`<b style="color:${t.v>=0?'#12b76a':'#e6413c'}">${t.v>=0?'+':''}${t.v.toFixed(0)}</b>`).join(' · ');
+    const trend = `<svg width="${W}" height="${H}" style="display:block;margin:0 auto">
+      <line x1="${PAD}" y1="${y0}" x2="${W-PAD}" y2="${y0}" stroke="#e8eef7" stroke-width="1" stroke-dasharray="3,3"/>
+      <path d="${path}" fill="none" stroke="#2b7ff5" stroke-width="2" stroke-linejoin="round"/>
+      ${dots}${labels}
+    </svg><div style="text-align:center;font-size:12px;margin-top:2px">${vals_txt}</div>`;
+    const flows = d.flows.slice(0,10).map(f=>`<tr><td>${f.kind}</td>
+      <td style="color:${f.amount>=0?'#12b76a':'#e6413c'}">${f.amount>=0?'+':''}${f.amount.toFixed(2)}</td>
+      <td class="lbl">${f.memo||''}</td>
+      <td class="lbl">${new Date(f.ctime*1000).toLocaleString('zh-CN')}</td></tr>`).join('');
+    const rooms = d.rooms.length ? d.rooms.map(r=>`<span class="pre">${r.code}</span>`).join(' ') : '<span class="lbl">当前不在任何房间</span>';
+    const m = document.querySelector('#mask .modal');
+    m.style.maxHeight = '72vh'; m.style.overflowY = 'auto';
+    m.innerHTML=`<h3>玩家详情 · ${uid} <span style="font-size:12px;color:#8b98ad;cursor:pointer;float:right" onclick="$('mask').classList.remove('on')">✕</span></h3>
+      <div class="box" style="margin:0 0 12px"><div class="row" style="gap:20px;justify-content:center">
+        <div style="text-align:center"><div class="lbl">中心</div><b style="font-size:16px">${d.wallet.center.toFixed(2)}</b></div>
+        <div style="text-align:center"><div class="lbl">棋牌</div><b style="font-size:16px;color:#7c3aed">${d.wallet.poker.toFixed(2)}</b></div>
+        <div style="text-align:center"><div class="lbl">彩票</div><b style="font-size:16px;color:#0f9f5f">${d.wallet.lot.toFixed(2)}</b></div>
+        <div style="text-align:center"><div class="lbl">今日盈亏</div><b style="font-size:16px;color:${d.pnl.pnl>=0?'#12b76a':'#e6413c'}">${d.pnl.pnl>=0?'+':''}${d.pnl.pnl.toFixed(2)}</b></div>
+      </div></div>
+      <div class="lbl" style="margin:8px 0 4px">近 7 天盈亏</div>
+      <div style="text-align:center;margin-bottom:12px">${trend}</div>
+      <div class="lbl" style="margin:8px 0 4px">当前房间</div><div style="margin-bottom:12px">${rooms}</div>
+      <div class="lbl" style="margin:8px 0 4px">最近流水</div>
+      <table><tr><th>类型</th><th>金额</th><th>备注</th><th>时间</th></tr>${flows||'<tr><td colspan=4 class="lbl">暂无</td></tr>'}</table>
+      <div class="mact" style="margin-top:14px"><button class="p" onclick="$('mask').classList.remove('on')">关闭</button></div>`;
+    $('mask').classList.add('on');
+  }catch(e){ alert(e.message); }
+}
+
+async function savePokerCfg(){
+  const rate = (Number(document.getElementById('botRateSlider').value)/100).toFixed(2);
+  const fee = document.getElementById('pokerFee').value;
+  try{
+    await api('/api/admin/df/conf',{k:'poker_bot_rate',v:rate});
+    await api('/api/admin/df/conf',{k:'poker_fee',v:fee});
+    await api('/api/admin/df/conf',{k:'poker_msg_rate',v:document.getElementById('pokerMsgRate').value});
+    await api('/api/admin/df/conf',{k:'poker_act_ms',v:document.getElementById('pokerActMs').value});
+    await api('/api/admin/df/conf',{k:'poker_same_dev',v:document.getElementById('pokerSameDev').value});
+    await api('/api/admin/df/conf',{k:'poker_min_balance',v:document.getElementById('pokerMinBal').value});
+    await api('/api/admin/df/conf',{k:'poker_name_pool',v:document.getElementById('pokerNamePool').value});
+    alert('已保存（60 秒内生效）');
+  }catch(e){ alert(e.message); }
+}
+
+async function kickRoom(code){
+  if(!confirm('解散房间 '+code+'？')) return;
+  try{ await api('/api/admin/poker/rooms?code='+encodeURIComponent(code),null,'DELETE'); render(); }
+  catch(e){ alert(e.message); }
+}
+async function clearPokerHist(){
+  if(!confirm('清空全部对局历史？')) return;
+  try{ await api('/api/admin/poker/history',null,'DELETE'); render(); }
+  catch(e){ alert(e.message); }
+}
+async function mkBots(){
+  const lots=[...document.querySelectorAll('.blot:checked')].map(e=>e.value);
+  if(!lots.length) return alert('至少选一个彩种');
+  try{
+    const d=await api('/api/admin/bots',{action:'create',n:Number($('bN').value),
+      min_amt:Number($('bMin').value),max_amt:Number($('bMax').value),
+      pace:Number($('bPace').value),lots});
+    alert('已生成 '+d.created+' 个机器人\n'+d.uids.slice(0,8).join(' '));render();
+  }catch(e){alert(e.message)}
+}
+async function togBot(uid,on){
+  try{await api('/api/admin/bots',{action:'update',uid,enabled:on});render();}catch(e){alert(e.message)}
+}
+async function rechargeBot(uid){
+  try{await api('/api/admin/bots',{action:'recharge',uid,amount:2000});render();}catch(e){alert(e.message)}
+}
+async function delBot(uid){
+  if(!confirm('删除机器人 '+uid+'？账号会被冻结'))return;
+  try{await api('/api/admin/bots',{action:'delete',uid});render();}catch(e){alert(e.message)}
+}
+async function runBots(){
+  try{const d=await api('/api/admin/bots',{action:'run'});
+    alert('本轮触发 '+d.acted+' 笔 / 检查 '+d.checked+' 个');render();
+  }catch(e){alert(e.message)}
+}
+
+async function saveCollector(){
+  try{
+    await api('/api/admin/collector',{lot:$('cLot').value,cfg:_cfg()});
+    alert('已保存。该彩种将改用官方开奖，本地随机开奖停止。');render();
+  }catch(e){alert(e.message)}
+}
+async function dryCollector(){
+  $('cOut').textContent='拉取中…';
+  try{
+    const d=await api('/api/admin/collector/dry',{cfg:_cfg()});
+    $('cOut').textContent='共 '+d.count+' 条\n'+d.sample.map(x=>`${x.issue}  →  ${x.numbers}`).join('\n');
+  }catch(e){$('cOut').textContent='失败: '+e.message}
+}
+async function runCollector(){
+  try{const d=await api('/api/admin/collector/run',{});
+    $('cOut').textContent=JSON.stringify(d.result,null,1);
+  }catch(e){alert(e.message)}
+}
+async function drawOfficial(){
+  try{
+    const d=await api('/api/admin/draw_official',{lot:$('oLot').value,issue:$('oIssue').value.trim(),numbers:$('oNum').value.trim()});
+    alert(`已开奖 ${d.lot} ${d.issue} → ${d.numbers}\n注单 ${d.bets||0} 派彩 ${d.payout||0}`);
+  }catch(e){alert(e.message)}
+}
+async function saveLive(){
+  try{
+    await api('/api/admin/live',{lot:$('lLot').value,
+      cfg:{url:$('lUrl').value.trim(),title:$('lTitle').value.trim(),
+           type:/\.(m3u8|mp4)/i.test($('lUrl').value)?'video':'iframe'}});
+    alert('直播源已保存');
+  }catch(e){alert(e.message)}
+}
+
+async function loadLiveRank(){
+  try{
+    const lot=$('rklot').value, kind=$('rkkind').value;
+    const ds=await api('/api/ranks?lot='+lot+'&kind='+kind+'&n=50&limit=20&robot=0');
+    $('liveRank').textContent = ds.length
+      ? ds.map((r,i)=>`${String(i+1).padStart(2)}  ${(r.mask||'').padEnd(12)}  连中${String(r.streak).padStart(2)}  `
+        +`${r.hit}/${r.played}  盈利${r.profit}`).join('\n')
+      : '暂无数据';
+  }catch(e){$('liveRank').textContent='加载失败: '+e.message}
+}
+function fillDemo(){
+  $('robotJson').value=JSON.stringify([
+    {mask:"澳门***华",streak:11,profit:38600,played:12,hit:11,single:9800},
+    {mask:"连中***王",streak:9,profit:27400,played:10,hit:9,single:6600},
+    {mask:"老***哥",streak:8,profit:19200,played:11,hit:8,single:4400}
+  ],null,1);
+}
+async function saveRobot(){
+  try{
+    const items=JSON.parse($('robotJson').value||'[]');
+    await api('/api/admin/robot_ranks',{items});
+    alert('已保存，前端榜单立即生效');
+  }catch(e){alert('JSON 格式错误: '+e.message)}
+}
+async function clearRobot(){
+  try{await api('/api/admin/robot_ranks',{items:[]});$('robotJson').value='[]';alert('已清空');}
+  catch(e){alert(e.message)}
+}
+
+async function saveOdds(){
+  try{
+    const o=JSON.parse($('oddsJson').value);
+    await api('/api/admin/odds',{odds:o});alert('已保存');
+  }catch(e){alert('JSON 格式错误：'+e.message)}
+}
+
+if(T)boot();else{renderTabs();openLogin();}
+</script></body></html>
