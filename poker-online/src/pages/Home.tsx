@@ -76,6 +76,13 @@ export function Home() {
         {checking?'验证登录中…':busy?'进入中…':loginError?'重试登录并进入':'开始游戏'}
       </button>
 
+      {!initialGame && (
+        <nav aria-label="五人棋牌" style={{display:'flex', gap:'1.5rem', marginTop:'1rem'}}>
+          <a href="/#play-zjh">炸金花 · 五人桌</a>
+          <a href="/#play-nn">牛牛 · 五人桌</a>
+        </nav>
+      )}
+
       {loginError && <p role="alert" className="mini-tip">{loginError} · <a href="/">返回主站</a></p>}
       {lobbyApi.mode === 'mock' && (
         <p className="mini-tip">本地演示模式</p>
