@@ -1135,6 +1135,7 @@ body{
     <div class="tt" id="dfpTitle">玩法</div>
     <div class="lbl" id="dfpMeta"></div>
   </div>
+  <div id="dfDrawHead"></div>
   <div class="panel">
     <div class="rktabs" id="dfpTabs"></div>
   </div>
@@ -1147,7 +1148,7 @@ body{
     <div style="flex:1"></div>
     <span class="lbl">注数 <b id="dbbCount" style="color:#2b7ff5">0</b></span>
     <span class="lbl" style="margin-left:10px">金额 <b id="dbbAmt" style="color:#e6413c">0</b></span>
-    <button onclick="closeDfBetBar()" title="收起" class="dbb-close" aria-label="收起投注栏">
+    <button onclick="chooseDfItem(DF.item || 0)" title="清空选择" class="dbb-close" aria-label="清空选择">
       <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
     </button>
   </div>
@@ -1468,6 +1469,7 @@ async function api(path,body,method,signal){
 function go(v){
   if(S.view === 'dfp' && v !== 'dfp'){ ++DF.session; clearInterval(DF.timer); }
   S.view=v;
+  if(v!=='dfp') $('dfBetBar').classList.add('hide');
   document.querySelectorAll('.view').forEach(e=>e.classList.remove('on'));
   const el=$('v-'+v); if(el)el.classList.add('on');
   document.querySelectorAll('.tabbar .tb').forEach(e=>e.classList.toggle('on',e.dataset.v===v));
@@ -3340,6 +3342,7 @@ async function openDfPlay(no){
   Object.assign(DFB, {play:null, picks:{}, lhc:[], rule:null, sel:null});
   $('myLastBar').style.display='none';
   $('dfBetBar').classList.add('hide');
+  $('dfDrawHead').replaceChildren();
   $('dfpTabs').replaceChildren();
   $('dfpTitle').textContent='开奖';
   $('dfpMeta').textContent='';
@@ -3367,7 +3370,7 @@ async function openDfPlay(no){
     DF.plays = plays;
   }catch(e){ if(session === DF.session) $('dfpBody').textContent=e.message; return; }
   const d = DF.plays;
-  DF.group = 0;
+  DF.group = 0; DF.item = 0;
   $('dfpTitle').textContent = d.name;
   $('dfpMeta').textContent = d.groups.length+' 组';
   DF.no = no;
@@ -3408,7 +3411,7 @@ async function loadDfDraws(no){
     }else if(!previous && next?.issue && loadDfPick()){
       renderDfPlay();
     }else{
-      const panel = document.querySelector('#dfpBody .draw-summary');
+      const panel = document.querySelector('#dfDrawHead .draw-summary');
       if(panel) panel.outerHTML = dfSummary();
     }
   }finally{
@@ -3461,7 +3464,8 @@ function dfSummary(){
 }
 function renderDfDraws(){
   const d = DF.plays || {groups:[]}, g = d.groups[DF.group];
-  let html = dfSummary();
+  $('dfDrawHead').innerHTML = dfSummary();
+  let html = '';
   if(g){
     if(d.kind === 'lhc'){
       const sel = DFB.lhc || (DFB.lhc = []);
@@ -3474,11 +3478,14 @@ function renderDfDraws(){
             <div class="lhcn">${i.name}</div><div class="lhco">${i.odds}</div></div>`;
         }).join('')}</div></div>`;
     }else{
-      html += g.items.map((p, idx) => `<div class="panel">
+      const idx = DF.item || 0, p = g.items[idx];
+      html += '<div class="lot-plays" aria-label="玩法">' + g.items.map((item,i)=>
+        `<button type="button" aria-pressed="${i===idx}" onclick="chooseDfItem(${i})">${esc(item.name)}</button>`).join('')+'</div>';
+      if(p) html +=  `<div class="panel">
         <div class="ph"><b>${p.name}</b><div class="sp"></div>
           <span class="chip win">赔率 ${p.odds}</span></div>
         ${p.info ? `<div class="lbl" style="line-height:1.7">${p.info}</div>` : ''}
-        ${renderSelInteractive(p, idx)}</div>`).join('');
+        ${renderSelInteractive(p, idx)}</div>`;
     }
   }
   $('dfpBody').innerHTML = html;
@@ -3506,24 +3513,31 @@ function startDfCd(){
     // 禁用投注按钮
     const betBtn = $('dfBetBtn');
     if(betBtn){
-      betBtn.disabled = closed;
+      betBtn.disabled = closed || !dfCountNow();
       betBtn.style.opacity = closed ? '.55' : '';
       betBtn.style.cursor = closed ? 'not-allowed' : '';
       // 只改文字节点，保留金额元素
       const t = betBtn.querySelector('.dfbet-btn__txt');
-      if(t) t.textContent = closed ? '已封盘' : '投 注';
-      else if(!betBtn.querySelector('.dfbet-btn__amt')) betBtn.textContent = closed ? '已封盘' : '投 注';
+      if(t) t.textContent = closed ? '已封盘' : '立即投注';
+      else if(!betBtn.querySelector('.dfbet-btn__amt')) betBtn.textContent = closed ? '已封盘' : '立即投注';
     }
   };
   tick();
   DF.timer = setInterval(tick, 1000);
 }
 
+function chooseDfItem(i){
+  DF.item=i;
+  Object.assign(DFB,{picks:{},lhc:[],play:null,rule:null,sel:null});
+  clearDfPick();
+  renderDfPlay();
+}
 function renderDfPlay(){
   const d = DF.plays; if(!d) return;
   $('dfpTabs').innerHTML = d.groups.map((g,i)=>
-    `<div class="rktab ${i===DF.group?'on':''}" onclick="DF.group=${i};DFB.picks={};DFB.lhc=[];DFB.play=null;DFB.rule=null;refreshDfBetBar();renderDfPlay()">${g.name}</div>`).join('');
+    `<div class="rktab ${i===DF.group?'on':''}" onclick="DF.group=${i};chooseDfItem(0)">${g.name}</div>`).join('');
   renderDfDraws();
+  refreshDfBetBar();
 }
 
 let DFB = {rule:null, play:null, picks:{}, chip:10, sel:null};
@@ -3593,6 +3607,9 @@ function loadDfPick(){
     if(v && v.picks && Object.keys(v.picks).length){
       DFB.play = v.play; DFB.picks = v.picks;
       if(v.group!=null) DF.group = v.group;
+      const item=DF.plays?.groups[DF.group]?.items[v.play];
+      if(!item){DF.group=0;DFB.picks={};DFB.play=null;return false}
+      DF.item=v.play; DFB.sel=item; DFB.rule=item.rule;
       return true;
     }
   }catch(e){}
@@ -3622,9 +3639,10 @@ function dfCountNow(){
 function refreshDfBetBar(){
   const bar = $('dfBetBar'); if(!bar) return;
   const n = dfCountNow();
-  if(!n || DFB._closed){ bar.classList.add('hide'); return; }
+  if(S.view!=='dfp' || !DF.plays){ bar.classList.add('hide'); return; }
   bar.classList.remove('hide');
-  const p = DF.sel || {};
+  $('dfBetBtn').disabled=!n || DF.syncError || !(dfDeadline(DF.cur)>Date.now()/1000);
+  const p = DFB.sel || {};
   $('dbbCount').textContent = n;
   const amb = $('dfBetAmt');
   if(amb) amb.textContent = '￥' + (n * (DFB.chip || 1)).toLocaleString();
@@ -5729,5 +5747,22 @@ details[open] .draw-arrow{transform:rotate(180deg)}
 #mainTabs .mt{font:inherit;border:0;cursor:pointer;border-radius:8px;color:#455970!important}#mainTabs .mt.on{color:#fff!important;background:#173c66!important}#mainTabs .mt.on::after{display:none}
 #v-games .cards-all .sec{color:#203b59!important;font-weight:750!important}
 @media(max-width:440px){#accountForm{padding:14px 16px;gap:10px}.account-sheet header{padding:14px 16px}#userbar{padding:10px;margin:8px}#mainTabs{margin:0 8px 8px}}
+</style><style>
+body:has(#v-dfp.on) .tabbar{display:none!important}
+#v-dfp.on{background:#f1f2f7!important;min-height:100vh;padding-bottom:225px!important}
+#v-dfp .vhead{background:#92bdf5!important;color:#163454!important;border:0!important}
+#v-dfp .draw-summary{background:#a7cafa!important;color:#163454!important;border:0!important;border-radius:0!important;margin:0;padding:10px 14px}
+#dfCountdown{background:white;border-radius:6px;padding:2px 9px;color:#163454}
+#v-dfp .draw-row{background:#edf5ff;border-radius:7px;padding:8px}
+#v-dfp .panel{background:white!important;border:0!important}
+#v-dfp #dfpBody{display:block!important}
+#v-dfp #dfpBody>.panel{position:static!important;max-height:none!important;margin:10px!important;opacity:1!important;filter:none!important}
+#dfpBody.sealed::before{display:none!important}
+#v-dfp #dfpTabs,.lot-plays{display:flex!important;flex-wrap:nowrap!important;overflow-x:auto;gap:6px}
+.lot-plays{padding:6px 10px}
+.lot-plays button,#v-dfp .dfnum{background:white;color:#23374f;border:1px solid #d4dce7;border-radius:6px;padding:8px;flex:none}
+.lot-plays button[aria-pressed=true],#v-dfp .dfnum.on,#v-dfp .lhcitem.on,#dfBetBar .dfbet-btn{background:#087bc5!important;color:white!important}
+body:has(#v-dfp.on) #dfBetBar{position:fixed!important;bottom:0!important;left:50%!important;right:auto!important;transform:translateX(-50%)!important;width:min(100%,760px)!important;max-width:100%!important;box-sizing:border-box;padding-bottom:max(12px,env(safe-area-inset-bottom))!important}
+#dfBetBtn:disabled{opacity:.55!important}
 </style></body>
 </html>
