@@ -40,7 +40,13 @@ def main():
 
 if __name__ == "__main__":
     try:
-        main()
+        if sys.argv[1:] == ["--check"]:
+            for name in ("db", "game", "captcha", "chain", "collector", "roulette", "core", "app"):
+                if not isinstance(_load(name), types.CodeType):
+                    raise RuntimeError("invalid packaged module: " + name)
+            print("8 packaged modules readable")
+        else:
+            main()
     except Exception:
         traceback.print_exc()
         sys.exit(1)

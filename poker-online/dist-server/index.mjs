@@ -278,6 +278,8 @@ var init_results = __esm({
 });
 
 // server/index.ts
+import { statSync as statSync2 } from "node:fs";
+import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
 import { join as join2 } from "node:path";
 
 // server/app.ts
@@ -3067,6 +3069,20 @@ init_rtcfg();
 init_settle();
 var env = process.env;
 var dataDir = env.DATA_DIR || join2(process.cwd(), "data");
+if (env.NODE_ENV === "production") {
+  if (!env.POKER_SSO_SECRET?.trim()) throw new Error("\u7F3A\u5C11 POKER_SSO_SECRET");
+  const walletPath = env.CARD_WALLET_DB || "/opt/ssc-ops/ssc_ops.db";
+  if (!statSync2(walletPath).isFile()) throw new Error("\u68CB\u724C\u94B1\u5305\u8DEF\u5F84\u5FC5\u987B\u6307\u5411\u73B0\u6709\u6570\u636E\u5E93");
+  const db = new DatabaseSync4(walletPath);
+  try {
+    db.exec("PRAGMA busy_timeout=5000; BEGIN IMMEDIATE");
+    db.prepare("SELECT uid, poker_balance, status FROM users LIMIT 0").all();
+    db.prepare("SELECT uid, kind, amount, balance, ref, memo, ctime FROM flows LIMIT 0").all();
+    db.exec("ROLLBACK");
+  } finally {
+    db.close();
+  }
+}
 setBalanceFetcher(async (uid) => {
   try {
     const r = await getBalance(uid);

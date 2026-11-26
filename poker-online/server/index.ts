@@ -10,6 +10,8 @@
 //   TRUST_PROXY     部署在反向代理（Nginx 等）之后时设为 1，用于获取真实 IP
 //   MAX_ROOMS       最多同时存在的房间数（默认 500）
 
+import { statSync } from 'node:fs';
+import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
 import { createApp } from './app';
 import { log } from './log';
@@ -19,6 +21,22 @@ import { getBalance } from './settle';
 
 const env = process.env;
 const dataDir = env.DATA_DIR || join(process.cwd(), 'data');
+
+// Check the integrated wallet before opening the production listener.
+if (env.NODE_ENV === 'production') {
+  if (!env.POKER_SSO_SECRET?.trim()) throw new Error('缺少 POKER_SSO_SECRET');
+  const walletPath = env.CARD_WALLET_DB || '/opt/ssc-ops/ssc_ops.db';
+  if (!statSync(walletPath).isFile()) throw new Error('棋牌钱包路径必须指向现有数据库');
+  const db = new DatabaseSync(walletPath);
+  try {
+    db.exec('PRAGMA busy_timeout=5000; BEGIN IMMEDIATE');
+    db.prepare('SELECT uid, poker_balance, status FROM users LIMIT 0').all();
+    db.prepare('SELECT uid, kind, amount, balance, ref, memo, ctime FROM flows LIMIT 0').all();
+    db.exec('ROLLBACK');
+  } finally {
+    db.close();
+  }
+}
 
 // 注入余额查询（供座位显示）
 setBalanceFetcher(async (uid) => {
