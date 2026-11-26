@@ -1,0 +1,12 @@
+[Unit]
+Description=Fetch New Macau Mark Six results
+After=network-online.target
+[Service]
+Type=oneshot
+User=www-data
+StateDirectory=xam-draws
+ExecStart=/usr/bin/python3 -B /opt/ssc-ops/sync_macau.py /var/lib/xam-draws/archive.db /var/lib/xam-draws/latest.json
+TimeoutStartSec=40
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
