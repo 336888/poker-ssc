@@ -1143,15 +1143,9 @@ body{
 </section>
 
 <div class="dfbetbar hide" id="dfBetBar">
-  <div class="dbb-top">
-    <span class="lbl" id="dbbInfo">未选号</span>
-    <div style="flex:1"></div>
-    <span class="lbl">注数 <b id="dbbCount" style="color:#2b7ff5">0</b></span>
-    <span class="lbl" style="margin-left:10px">金额 <b id="dbbAmt" style="color:#e6413c">0</b></span>
-    <button onclick="chooseDfItem(DF.item || 0)" title="清空选择" class="dbb-close" aria-label="清空选择">
-      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
-    </button>
-  </div>
+  <div class="ticket-total" aria-live="polite">已选 <b id="dbbCount">0</b> 注，共 <b id="dbbAmt">0</b> 元</div>
+  <div class="dbb-top"><button type="button" onclick="chooseDfItem(DF.item || 0)">清空选择</button>
+    <span id="dbbInfo"></span><span>余额 ￥<b id="slipBalance">—</b></span></div>
   <div class="dbb-chips" id="dbbChips"></div>
   <div style="display:flex;gap:6px;margin-bottom:8px">
     <button onclick="saveFavNums()" style="flex:1;height:32px;border:1px solid #d8e7fb;border-radius:8px;background:#f2f7ff;color:#2b7ff5;font-size:12px;font-weight:600">存常用</button>
@@ -1722,6 +1716,9 @@ async function loadFavNums(){
 }
 
 async function loadMyLast(no, session = DF.session){
+  if(S.token) walletInfo().then(w=>{
+    if(session===DF.session) $('slipBalance').textContent=Number(w.lot).toFixed(2);
+  }).catch(()=>{});
   try{
     if(!S.token) return;
     const d = await api('/api/df/my_last?no=' + encodeURIComponent(no));
@@ -2018,6 +2015,23 @@ function cardHtml(k){
     <div class="nm">${nm}</div><div class="en">${ui.en}</div>
     <div class="art ${ui.gold?'gold':''}"><b>${ui.art}</b></div></div>`;
 }
+function drawFace(n, dice, kind){
+    const value = String(n).trim();
+    if(dice && /^0?[1-6]$/.test(value)){
+      const spots = ['', '5', '19', '159', '1379', '13579', '134679'][Number(value)];
+      return `<span class="draw-die" role="img" aria-label="${Number(value)}点" data-face="${Number(value)}">${Array.from({length:9}, (_, i) => spots.includes(String(i+1)) ? '<i></i>' : '<span></span>').join('')}</span>`;
+    }
+    return dfBall(esc(value), kind);
+  }
+function lotteryCard(x, cat){
+  const numbers=String(x.last?.nums || '').trim().split(/[,，\s]+/).filter(Boolean);
+  const dice=cat==='快三' || /快三|快3/.test(x.name);
+  const issue=x.last?.issue;
+  return `<button type="button" class="lot-ticket" data-no="${esc(String(x.no))}" onclick="openDfPlay(this.dataset.no)">
+    <span class="ticket-title"><strong>${esc(x.name)}</strong><span>下注 ›</span></span>
+    <span class="ticket-result"><small>${issue?esc(String(issue))+'期':'上期开奖'}</small>
+    <span class="ticket-values">${numbers.length?numbers.map(n=>drawFace(n,dice,cat==='六合彩'?'lhc':'num')).join(''):'等待开奖'}</span></span></button>`;
+}
 function renderHall(){
   try{
     const el = $('hall'); if(!el) return;
@@ -2042,18 +2056,7 @@ function renderHall(){
       if(!lots.length) return;
       shown += lots.length;
       html += `<div class="sec"><span>${cat}<small style="font-weight:400;color:#8b98ad;margin-left:6px">· 飞龙</small></span></div>`;
-      html += lots.map(x=>{
-        const ln = x.last && x.last.nums ? String(x.last.nums).split(/[,\s]+/).filter(Boolean) : null;
-        const balls = ln ? ln.map(n=>`<b>${n}</b>`).join('') : '';
-        return `<div class="gcard" onclick="openDfPlay('${x.no}')">
-          <div class="nm">${esc(x.name)}</div>
-          <div class="en">${x.info||''}</div>
-          <div class="badge lv" style="background:${x.src==='credit'?'#fff2e0':'#e6f4ff'};color:${x.src==='credit'?'#b26a00':'#1a6fc4'}">${x.src==='credit'?'信用盘':'官方盘'}</div>
-          ${HOT_LOTS.has(x.no)?'<div class="badge hot">热</div>':''}
-          <div class="lastnums">${ln?`<span>上期</span>${balls}<span class="live-dot"></span>`:`<span class="wait">等待开奖</span>`}</div>
-          <div style="position:absolute;right:9px;bottom:8px;font-size:10px;color:#a8b6c8">${x.plays} 玩法</div>
-        </div>`;
-      }).join('');
+      html += lots.map(x=>lotteryCard(x,cat)).join('');
     });
     if(!shown) html += '<div style="grid-column:1/-1;text-align:center;padding:60px 0;color:#a8b4c8;font-size:14px">该分类暂无彩种</div>';
     html += '</div>';
@@ -3325,11 +3328,7 @@ async function openDf(){
     <div class="panel">
       <div class="ph"><b>${cat}</b><div class="sp"></div><span class="lbl">${lots.length} 个</span></div>
       <div class="dfgrid">
-        ${lots.map(x=>`<div class="dfcard" onclick="openDfPlay('${x.no}')">
-          <div class="dfname">${x.name}</div>
-          <div class="dfinfo">${x.info||''}</div>
-          <div class="dfbadge ${x.src==='credit'?'cr':'of'}">${x.src==='credit'?'信用':'官方'} · ${x.plays} 玩法</div>
-        </div>`).join('')}
+        ${lots.map(x=>lotteryCard(x,cat)).join('')}
       </div>
     </div>`).join('');
 }
@@ -3376,6 +3375,7 @@ async function openDfPlay(no){
   DF.no = no;
   DFB.play = null; DFB.picks = {};
   renderDfPlay();
+  $('slipBalance').textContent='—';
   loadMyLast(no);
   loadDfDraws(no);
 }
@@ -3441,14 +3441,7 @@ function dfSummary(){
   const last = cur.last_numbers ? String(cur.last_numbers).split(',') : [];
 
   const dice = /快三|快3/i.test(d.name || '') || (DF.lots?.['快三'] || []).some(x => String(x.no) === String(DF.no));
-  const face = n => {
-    const value = String(n).trim();
-    if(dice && /^0?[1-6]$/.test(value)){
-      const spots = ['', '5', '19', '159', '1379', '13579', '134679'][Number(value)];
-      return `<span class="draw-die" role="img" aria-label="${Number(value)}点" data-face="${Number(value)}">${Array.from({length:9}, (_, i) => spots.includes(String(i+1)) ? '<i></i>' : '<span></span>').join('')}</span>`;
-    }
-    return dfBall(esc(value), kind);
-  };
+  const face = n => drawFace(n, dice, kind);
   const wasOpen = $('drawHistory')?.dataset.lot === String(DF.no) && $('drawHistory').open;
   const row = `<span class="draw-period">上期<br><b>${esc(String(cur.last_issue || '—'))}</b></span>
     <span class="draw-values">${last.length ? last.map(face).join('') : '等待开奖'}</span>`;
@@ -3642,12 +3635,11 @@ function refreshDfBetBar(){
   if(S.view!=='dfp' || !DF.plays){ bar.classList.add('hide'); return; }
   bar.classList.remove('hide');
   $('dfBetBtn').disabled=!n || DF.syncError || !(dfDeadline(DF.cur)>Date.now()/1000);
-  const p = DFB.sel || {};
   $('dbbCount').textContent = n;
   const amb = $('dfBetAmt');
   if(amb) amb.textContent = '￥' + (n * (DFB.chip || 1)).toLocaleString();
   $('dbbAmt').textContent = (n * DFB.chip).toFixed(0);
-  $('dbbInfo').textContent = (p.name||'') + ' · 每注 ' + DFB.chip;
+  $('dbbInfo').textContent = '每注 '+DFB.chip+' 元';
   renderDfChips();
 }
 
@@ -5764,5 +5756,24 @@ body:has(#v-dfp.on) .tabbar{display:none!important}
 .lot-plays button[aria-pressed=true],#v-dfp .dfnum.on,#v-dfp .lhcitem.on,#dfBetBar .dfbet-btn{background:#087bc5!important;color:white!important}
 body:has(#v-dfp.on) #dfBetBar{position:fixed!important;bottom:0!important;left:50%!important;right:auto!important;transform:translateX(-50%)!important;width:min(100%,760px)!important;max-width:100%!important;box-sizing:border-box;padding-bottom:max(12px,env(safe-area-inset-bottom))!important}
 #dfBetBtn:disabled{opacity:.55!important}
+</style><style>
+.lot-ticket{display:grid;align-content:start;gap:8px;min-width:0;flex:1 1 210px;max-width:100%;text-align:left;padding:12px;border:1px solid #bfceeb;border-radius:10px;background:linear-gradient(120deg,#a9ceff,#dceaff);color:#21344d;font:inherit;cursor:pointer}
+.ticket-title,.ticket-result,.ticket-values{display:flex;align-items:center;gap:6px}
+.ticket-title{justify-content:space-between}.ticket-title strong{font-size:16px}.ticket-title>span{color:#214e7e;font-size:12px;white-space:nowrap}
+.ticket-result{align-items:flex-start;flex-direction:column;background:#ffffffba;padding:7px;border-radius:6px}.ticket-result small{color:#50627a;font-size:11px}
+.ticket-values{flex-wrap:wrap;font-size:13px}.ticket-values .dball{min-width:22px;width:auto;height:24px;font:600 13px/24px system-ui;padding:0 3px}
+@media(max-width:600px){#hall .cards-all:has(.lot-ticket),#v-df .dfgrid:has(.lot-ticket){display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:8px!important}}
+#v-dfp.on{background:#eeecf2!important}
+#v-dfp .vhead,#v-dfp .draw-summary{background:#9fc6ff!important;color:#203449!important}
+#v-dfp #dfpTabs .rktab{background:white!important;color:#465264!important;border:0!important;border-radius:0!important}
+#v-dfp #dfpTabs .rktab.on{box-shadow:inset 0 -3px #27364a!important;color:#172333!important}
+#v-dfp .dfnums{display:grid;grid-template-columns:repeat(auto-fit,minmax(48px,1fr));gap:5px}
+#v-dfp .dfnum{width:auto!important;min-height:40px;border-radius:5px!important;display:grid;place-items:center}
+#v-dfp .dfnum.on,#v-dfp .lhcitem.on,#v-dfp .lot-plays button[aria-pressed=true],#dfBetBar #dfBetBtn,#dfBetBar .dbchip.on{background:#118ce3!important;color:white!important}
+#dfBetBar .ticket-total{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:6px;padding:3px 14px;border-radius:20px;background:#37343b;color:white;white-space:nowrap;font-size:12px}
+#dfBetBar .dbb-top{display:flex;justify-content:space-between;align-items:center;font-size:13px}
+#dfBetBar .dbb-top button{font:inherit;color:#374151;border:0;background:transparent;padding:6px}
+#dfBetBar .dbchip{background:#fff;border:1px solid #d5dbe5;border-radius:5px;color:#344054}
+#dfBetBar #dfBetBtn{border-radius:6px}
 </style></body>
 </html>
