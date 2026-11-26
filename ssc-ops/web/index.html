@@ -1018,9 +1018,9 @@ body{
 
 <div class="maintabs" id="mainTabs">
   <button type="button" class="mt on" data-k="lot" aria-pressed="true"><strong>彩票大厅</strong><span class="hall-art" aria-hidden="true"><i>7</i><i>3</i></span></button>
-  <button type="button" class="mt" data-k="live" aria-pressed="false">真人</button>
   <button type="button" class="mt" data-k="chess" aria-pressed="false"><strong>棋牌大厅</strong><span class="hall-art" aria-hidden="true"><i>♠</i><i>♥</i></span></button>
-  <button type="button" class="mt" data-k="slot" aria-pressed="false">电子</button>
+  <button type="button" class="mt" data-k="live" aria-pressed="false"><strong>真人大厅</strong><span class="hall-art" aria-hidden="true"><i></i><i></i></span></button>
+  <button type="button" class="mt" data-k="slot" aria-pressed="false"><strong>电子大厅</strong><span class="hall-art" aria-hidden="true"><i>7</i><i>7</i><i>7</i></span></button>
 </div>
 
 <section class="view on" id="v-games">
@@ -5778,10 +5778,17 @@ body:has(#v-dfp.on) #dfBetBar{position:fixed!important;bottom:0!important;left:5
 </style><style>
 #mainTabs:not(.hide){display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:0!important;background:transparent!important;border:0!important}
 #mainTabs .mt{position:relative;display:flex;align-items:center;justify-content:flex-start;padding:0 14px!important;min-width:0;overflow:hidden}
-#mainTabs .mt:is([data-k=lot],[data-k=chess]){grid-row:1;height:76px;isolation:isolate;border-radius:12px;box-shadow:inset 0 0 0 1px #ffffff38;color:white!important}
-#mainTabs .mt[data-k=lot]{grid-column:1;background:radial-gradient(ellipse at 95% 85%,#3eafff,transparent 60%),linear-gradient(125deg,#162f78,#225fb6)!important}
-#mainTabs .mt[data-k=chess]{grid-column:2;background:radial-gradient(ellipse at 95% 80%,#247a76,transparent 65%),linear-gradient(125deg,#102b42,#185453)!important}
-#mainTabs .mt:is([data-k=live],[data-k=slot]){height:30px;justify-content:center;background:#eef3fa!important;color:#40516a!important}
+#mainTabs button.mt{height:76px;isolation:isolate;border-radius:12px;box-shadow:inset 0 0 0 1px #ffffff38;color:white!important}
+#mainTabs .mt[data-k=lot]{grid-area:1/1;background:radial-gradient(ellipse at 95% 85%,#3eafff,transparent 60%),linear-gradient(125deg,#162f78,#225fb6)!important}
+#mainTabs .mt[data-k=chess]{grid-area:1/2;background:radial-gradient(ellipse at 95% 80%,#247a76,transparent 65%),linear-gradient(125deg,#102b42,#185453)!important}
+#mainTabs .mt[data-k=live]{grid-area:2/1;background:linear-gradient(125deg,#592433,#a34253)!important}
+#mainTabs .mt[data-k=slot]{grid-area:2/2;background:linear-gradient(125deg,#312659,#67529a)!important}
+[data-k=live] .hall-art i{width:39px;height:39px;border-radius:50%;right:3px;bottom:7px;background:repeating-conic-gradient(#fff0d1 0 16deg,#af3548 16deg 45deg);transform:rotate(-12deg);border:1px solid #d89983}
+[data-k=live] .hall-art i:after{content:"";position:absolute;inset:6px;border:2px solid #f2d6b1;border-radius:50%;background:#a13b4c}
+[data-k=live] .hall-art i:first-child{right:20px;bottom:25px}
+[data-k=slot] .hall-art{height:34px;width:55px;right:5px;bottom:20px;display:flex;align-items:stretch;padding:4px;gap:1px;border-radius:7px;background:linear-gradient(#ffe7a8,#be824b);box-shadow:1px 3px 0 #412943;transform:rotate(7deg)}
+[data-k=slot] .hall-art i{position:static;flex:1;border-radius:2px;background:linear-gradient(#dfc7b6,#fff9ec 55%,#e7d5c5);color:#a22d47;font:bold 19px Georgia;box-shadow:none}
+
 #mainTabs .mt[aria-pressed=true]{outline:2px solid #236dae;outline-offset:-2px}
 #mainTabs .mt[aria-pressed=true] strong{text-decoration:underline;text-underline-offset:7px;text-decoration-color:#f7cf83}
 #mainTabs .mt strong{font-size:clamp(16px,3.6vw,23px);z-index:1;letter-spacing:.04em}
