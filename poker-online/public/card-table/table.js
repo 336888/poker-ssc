@@ -9,7 +9,7 @@ let token=sessionStorage.getItem('card.auth'),state=null,busy=false,timer,picks=
 function note(s){$('status').textContent=s}
 function buttons(items){
   $('actions').replaceChildren(...items.map(([name,fn])=>{
-    const b=document.createElement('button');b.textContent=name;b.onclick=fn;return b;
+    const b=document.createElement('button');b.className='btn--primary';b.textContent=name;b.onclick=fn;return b;
   }));
 }
 function cards(id,hand,selectable){
@@ -31,12 +31,21 @@ function render(){
   $('marque').textContent=title(s.game);
   document.querySelector('h1').textContent=title(s.game);
   document.querySelector('header span').textContent=s.seats.length+'人桌';
-  document.querySelector('main h2').textContent='桌上座位';
-  $('away').replaceChildren(...s.seats.map((seat,i)=>{
-    const b=document.createElement('div');b.className='seat'+(seat.acting?' acting':'');
-    const label=i===s.me?'我':seat.kind==='空位'?'空位':'已入座';
-    b.textContent=(i+1)+'号 · '+label+'　'+(s.phase==='done'?'净额 '+(seat.delta??0):seat.acting?'行动中':!seat.active?'已出局':seat.ready?'已组牛':'');
-    if(seat.hand.length)b.textContent+='　'+seat.hand.map(c=>'23456789TJQKA'[rank(c)-2].replace('T','10')+'♦♣♥♠'[suit(c)]).join(' ');
+  const relative=[2,3,1,4];
+  $('self').textContent='我 · '+(s.me+1)+'号位';
+  $('away').replaceChildren(...relative.map(offset=>{
+    const i=(s.me+offset)%s.seats.length, seat=s.seats[i];
+    const b=document.createElement('div');
+    b.className='seat'+(seat.acting?' acting':'');
+    const name=document.createElement('strong'), info=document.createElement('small');
+    name.textContent=(i+1)+'号位';
+    info.textContent=s.phase==='done'?'净额 '+(seat.delta??0):seat.kind==='空位'?'空位':seat.acting?'行动中':!seat.active?'已出局':seat.ready?'已组牛':'已入座';
+    b.append(name,info);
+    if(seat.hand.length){
+      const hand=document.createElement('small');
+      hand.textContent=seat.hand.map(c=>'23456789TJQKA'[rank(c)-2].replace('T','10')+'♦♣♥♠'[suit(c)]).join(' ');
+      b.append(hand);
+    }
     return b;
   }));
   $('round').textContent='棋牌余额 '+s.wallet.toFixed(2);
@@ -71,7 +80,7 @@ async function request(action,target){
     const data=await res.json();
     if(!res.ok)throw Error(data.error||'牌局暂不可用');
     if(data.phase==='cancelled'){
-      state=null;document.documentElement.classList.remove('in-game');sessionStorage.removeItem('card.room');$('away').replaceChildren();$('home').replaceChildren();$('round').textContent='';$('pot').textContent='';
+      state=null;$('self').textContent='';document.documentElement.classList.remove('in-game');sessionStorage.removeItem('card.room');$('away').replaceChildren();$('home').replaceChildren();$('round').textContent='';$('pot').textContent='';
       note('已退出匹配，底注已退回');buttons([['重新匹配',()=>request('join')]]);return;
     }
     state=data;sessionStorage.setItem('card.room',data.id);render();
