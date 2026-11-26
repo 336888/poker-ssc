@@ -621,7 +621,12 @@ async function render(){
 
     }else if(TAB==='odds'){
       const d=await api('/api/playtypes');
-      m.innerHTML=`<div class="box"><h3>赔率配置（保存后立即生效，重启不丢）</h3>
+      const conf=await api('/api/admin/df/conf');
+      const rates=JSON.parse(conf.df_lhc_fixed_odds?.v || '{"特码A":47}');
+      const markets=['特码A','正码',...Array.from('一二三四五六',n=>'正'+n+'特'),'特码头数','特码尾数'];
+      m.innerHTML=`<div class="box"><h3>六合彩固定赔率</h3><p>含本金倍数，仅影响新单。号码玩法按组设置；除特码外，留空沿用原盘口。</p>
+        ${markets.map(k=>`<label style="display:inline-grid;margin:6px">${k}<input type="number" min="1" max="10000" step=".001" data-market="${k}" value="${rates[k]==null?'':Number(rates[k])}"></label>`).join('')}
+        <button class="p" onclick="saveSixOdds()">保存六合彩赔率</button></div><div class="box"><h3>其他赔率配置</h3>
         <div class="row"><button class="p" onclick="saveOdds()">保存</button>
         <span class="lbl">键名规则：玩法名，和值用 sum:22，跨度用 span:4</span></div>
         <textarea id="oddsJson" style="width:100%;height:320px">${
@@ -1169,6 +1174,19 @@ async function clearRobot(){
   catch(e){alert(e.message)}
 }
 
+async function saveSixOdds(){
+  try{
+    const rates={};
+    for(const input of document.querySelectorAll('[data-market]')){
+      if(input.value==='') continue;
+      if(!input.checkValidity())throw Error('请检查'+input.dataset.market+'赔率');
+      rates[input.dataset.market]=input.valueAsNumber;
+    }
+    if(!rates['特码A'])throw Error('请填写特码赔率');
+    await api('/api/admin/df/conf',{k:'df_lhc_fixed_odds',v:JSON.stringify(rates)});
+    alert('已保存，新注单使用新赔率');
+  }catch(e){alert(e.message)}
+}
 async function saveOdds(){
   try{
     const o=JSON.parse($('oddsJson').value);

@@ -3462,8 +3462,12 @@ function renderDfDraws(){
   if(g){
     if(d.kind === 'lhc'){
       const sel = DFB.lhc || (DFB.lhc = []);
+      const hint = g.name === '特码A' ? '选中第七个开奖号码即中奖。'
+        : g.name === '正码' ? '选单个号码时，前六个开奖号码中出现即中奖。'
+        : /^正[一二三四五六]特$/.test(g.name) ? '号码和开奖位置均须相符。'
+        : g.name === '特码头尾数' ? '头数看特码十位，尾数看个位。' : '';
       html += `<div class="panel"><div class="ph"><b>${g.name}</b><div class="sp"></div>
-        <span class="lbl">${g.items.length} 项 · 点选投注</span></div>
+        <span class="lbl">${g.items.length} 项 · 点选投注</span></div>${hint ? `<p class="lbl">${hint}</p>` : ''}
         <div class="lhcgrid">${g.items.map((i, ix) => {
           const key = g.name + '|' + i.name;
           const on = sel.some(x => x.key === key);

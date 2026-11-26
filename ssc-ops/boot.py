@@ -33,6 +33,8 @@ def main():
         sys.modules[n] = m
     for n in names:
         exec(_load(n), sys.modules[n].__dict__)
+    from lhc_odds import install
+    install(sys.modules["core"])
     g = {"__name__": "__main__", "__file__": os.path.join(_H, "app.py"),
          "__package__": None, "__builtins__": __builtins__}
     exec(_load("app"), g)
