@@ -905,6 +905,7 @@ function doLogout(){
   location.reload();
 }
 
+window.addEventListener('online', () => { if (S.token) loadMe(); });
 async function loadMe(){
   if(!S.token){
     $('uName').textContent='登录 / 注册';
@@ -914,8 +915,8 @@ async function loadMe(){
     const av=$('ava'); if(av) av.textContent='游';
     return;
   }
+  const token=S.token;
   try{
-    const token=S.token;
     const d=await api('/api/me');
     const w=await walletInfo().catch(()=>null);
     if(token!==S.token)return;
@@ -957,7 +958,7 @@ async function loadMe(){
       if(parts.length){ tag.textContent=parts.join(' · '); tag.style.display=''; }
       else tag.style.display='none';
     }else{$('walletTag').style.display='none';}
-  }catch(e){if(S.token)$('uBal').textContent='刷新失败';}
+  }catch(e){if(token===S.token)$('uBal').textContent='刷新失败';}
 }
 
 const HOT_LOTS = new Set(['10015','10016','20001','20002','30001','40001','50001','60001']);
