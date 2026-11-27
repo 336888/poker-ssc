@@ -251,7 +251,7 @@ export class RoomServer {
   }
 
   /** 已扣过房间费的玩家（防重复 leave 重复扣费） */
-  private chargedLeavers = new Set<string>();
+
 
   /** 消息频率窗口：防脚本高频刷操作 */
   private msgWindow = new Map<string, { count: number; at: number }>();
@@ -454,13 +454,11 @@ export class RoomServer {
   }
 
   private leave(me: RoomPlayer): void {
+    if (this.game && this.game.phase !== 'finished' && this.room.status === 'playing' && me.kind === 'human') {
+      const pay = this.leavePayInfo(me.id);
+      this.onPlayerLeaveMidGame?.(me.id, me.name, pay.mult, pay.role);
+    }
     if (me.isHost) {
-      // 房主在对局中解散，同样扣房间费
-      if (this.room.status === 'playing' && me.kind === 'human' && !this.chargedLeavers.has(me.id)) {
-        this.chargedLeavers.add(me.id);
-        const pay = this.leavePayInfo(me.id);
-        try { this.onPlayerLeaveMidGame?.(me.id, me.name, pay.mult, pay.role); } catch { /* 忽略 */ }
-      }
       this.destroy('房主已解散房间');
       this.onChange?.(this);
       return;
@@ -469,12 +467,6 @@ export class RoomServer {
     if (this.room.status === 'playing') {
       me.online = false;
       me.autoPlay = true;
-      // 对局中退出：扣房间费（每个玩家只扣一次）
-      if (me.kind === 'human' && !this.chargedLeavers.has(me.id)) {
-        this.chargedLeavers.add(me.id);
-        const pay = this.leavePayInfo(me.id);
-        try { this.onPlayerLeaveMidGame?.(me.id, me.name, pay.mult, pay.role); } catch { /* 忽略扣费异常 */ }
-      }
     } else {
       this.room.players = this.room.players.filter((p) => p !== me);
       this.normalizeConfig();

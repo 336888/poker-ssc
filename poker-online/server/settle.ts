@@ -103,7 +103,7 @@ export function calcDeltas(
   return { mult, pot, deltas };
 }
 
-export function bookRound(id:string, deltas:{uid:string;delta:number}[]) {
+export function bookRound(id:string, deltas:{uid:string;delta:number}[], memo = "牌局结算") {
   const path=process.env.CARD_WALLET_DB || '/opt/ssc-ops/ssc_ops.db';
   if(!existsSync(path))throw new Error('棋牌钱包数据库未接入');
   const db=new DatabaseSync(path);
@@ -116,7 +116,7 @@ export function bookRound(id:string, deltas:{uid:string;delta:number}[]) {
       const row=db.prepare('UPDATE users SET poker_balance=round(poker_balance+?,2) WHERE uid=? AND poker_balance+?>=0 RETURNING poker_balance').get(delta,uid,delta);
       if(!row)throw new Error('钱包不存在或余额不足');
       const balance=Number(row.poker_balance);
-      if(delta)db.prepare('INSERT INTO flows(uid,kind,amount,balance,ref,memo,ctime) VALUES(?,?,?,?,?,?,?)').run(uid,delta>0?'poker_win':'poker_lose',delta,balance,id,'牌局结算',Math.floor(Date.now()/1000));
+      if(delta)db.prepare('INSERT INTO flows(uid,kind,amount,balance,ref,memo,ctime) VALUES(?,?,?,?,?,?,?)').run(uid,delta>0?'poker_win':'poker_lose',delta,balance,id,memo,Math.floor(Date.now()/1000));
       return {uid,delta,balance};
     });
     db.prepare('INSERT INTO poker_round_receipts VALUES(?,?)').run(id,JSON.stringify(moves));
@@ -126,11 +126,4 @@ export function bookRound(id:string, deltas:{uid:string;delta:number}[]) {
 
 export async function getBalance(uid: string) {
   return bridge(uid, 'balance', 0);
-}
-
-
-/** 中途退出扣房间费 */
-export async function chargeFee(uid: string, amount = 1) {
-  const r = await bridge(uid, 'lose', amount);
-  return { uid, amount, balance: r?.balance };
 }

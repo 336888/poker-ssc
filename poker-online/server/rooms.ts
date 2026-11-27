@@ -6,7 +6,7 @@ import type { RoomConfig, RoomSummary } from '../src/net/protocol';
 import { RoomServer, randomId } from '../src/net/roomServer';
 import type { Store } from './db';
 import { log } from './log';
-import { bookRound, chargeFee, calcDeltas } from './settle';
+import { bookRound, calcDeltas } from './settle';
 import { rtCfg } from './rtcfg';
 import { clearResult, putResult, bumpStreak } from './results';
 
@@ -145,20 +145,17 @@ export class RoomManager {
       this.store.addHistory(record);
       server.broadcastAll();
     };
-    server.onPlayerLeaveMidGame = (uid, name, mult, role) => {
-      if(!verified(uid))return;
-      // 只对 SSO 玩家（主站 uid）扣费，随机 id 的游客不扣
-      if (!/^[A-Za-z0-9_]{3,24}$/.test(uid) || /^(host|p|sim)_/.test(uid)) return;
-      void (async () => {
-        try {
-          // 按实际倍数赔付：底注 × 倍数（地主翻倍），没有倍数额外叠加房间费
-          const amount = leaveAmount(mult, role);
-          const r = await chargeFee(uid, amount);
-          log('中途退出赔付', code, name, `倍数${mult} 角色${role || '-'} 扣${amount}元 余额${r.balance}`);
-        } catch (e) {
-          log('扣费失败', code, name, (e as Error).message);
-        }
-      })();
+    server.onPlayerLeaveMidGame = (uid, _name, mult, role) => {
+      const game = server.game;
+      if (!game || !verified(uid)) return;
+      const id = ['leave', code, server.room.createdAt, game.startedAt, game.round, uid].join(':');
+      const amount = this.store.queueLeaveFee(id, uid, leaveAmount(mult, role));
+      try {
+        bookRound(id, [{ uid, delta: -amount }], '中途退桌');
+        this.store.completeLeaveFee(id);
+      } catch (error) {
+        log('退桌费用待核对', id, String(error));
+      }
     };
     server.onModeration = (entry) => {
       log('拦截聊天', code, entry.name, entry.reason);

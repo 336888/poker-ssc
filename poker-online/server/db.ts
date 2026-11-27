@@ -20,6 +20,7 @@ export class Store {
     this.db.exec(`
       PRAGMA journal_mode = WAL;
       PRAGMA secure_delete = ON;
+      CREATE TABLE IF NOT EXISTS pending_leave_fees (id TEXT PRIMARY KEY, uid TEXT NOT NULL, amount REAL NOT NULL, created_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS redeemed_sso (signature TEXT PRIMARY KEY, expires INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS rooms (code TEXT PRIMARY KEY, snapshot TEXT NOT NULL, updated_at INTEGER NOT NULL);
@@ -51,6 +52,15 @@ export class Store {
 
   setMeta(key: string, value: string) {
     this.db.prepare('INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(key, value);
+  }
+
+  queueLeaveFee(id: string, uid: string, amount: number) {
+    this.db.prepare('INSERT OR IGNORE INTO pending_leave_fees VALUES (?,?,?,?)').run(id,uid,amount,Date.now());
+    return Number(this.db.prepare('SELECT amount FROM pending_leave_fees WHERE id=?').get(id)!.amount);
+  }
+
+  completeLeaveFee(id: string) {
+    this.db.prepare('DELETE FROM pending_leave_fees WHERE id=?').run(id);
   }
 
   consumeSso(signature:string, expires:number, now:number): boolean {

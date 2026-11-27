@@ -110,13 +110,14 @@ export function cardTables(path, config, clock = Date.now) {
       const r=JSON.parse(row.state);advance(r);r.rev++;save(r);
     }});
   }
-  function request(uid,body){
+  function request(uid,body,admit){
     return tx(()=>{
       let r;
       if(body.action==='join'){
         if(!['zjh','nn'].includes(body.game))throw new Error('游戏无效');
         r=get("SELECT state FROM card_duels WHERE phase IN ('wait','play') AND EXISTS(SELECT 1 FROM json_each(state,'$.users') WHERE value=?) LIMIT 1",uid);
         if(!r){
+          admit?.();
           const user=db.prepare('SELECT poker_balance,status FROM users WHERE uid=?').get(uid);
           if(!user||user.status!==1||user.poker_balance<Math.max(1,config().minBal))throw new Error('账户不可入场或棋牌余额不足');
           r=get("SELECT state FROM card_duels WHERE game=? AND phase='wait' AND json_array_length(state,'$.users')=5 AND due>? ORDER BY due LIMIT 1",body.game,clock());
@@ -147,16 +148,22 @@ export function cardTables(path, config, clock = Date.now) {
       const me=r.users.indexOf(uid), reveal=r.phase==='done'&&Boolean(r.hands);
       const wallets=db.prepare('SELECT uid,poker_balance FROM users WHERE uid IN (SELECT value FROM json_each(?))').all(JSON.stringify(r.users));
       const balances=new Map(wallets.map(row=>[row.uid,row.poker_balance]));
+      const configured = config(r.game).names;
+      const names = Array.isArray(configured) && configured.length ? configured : tableNames;
       return {id:r.id,rev:r.rev,game:r.game,phase:r.phase,due:r.due,me,seats:r.users.map((u,i)=>({
-          name:u ?? (r.phase==='wait'?null:tableNames[i]),balance:balances.get(u) ?? null,
+          name:u ?? (r.phase==='wait'?null:names[i % names.length]),balance:balances.get(u) ?? null,
           seat:i,kind:u?'真人':r.phase==='wait'?'空位':'机器人',active:r.active?.[i]!==false,
           acting:r.phase==='play'&&r.turn===i,paid:r.paid[i],delta:r.delta?.[i],
-          hand:reveal?r.hands[i]:[],ready:r.levels?.[i]!=null
+          hand:reveal?r.hands[i]:[],handCount:r.hands?.[i]?.length ?? 0,ready:r.levels?.[i]!=null
         })),
         turn:r.turn===me,base:r.base,seen:r.seen?.[me],pot:r.paid.reduce((a,b)=>a+b,0),delta:r.delta?.[me],level:r.levels?.[me],
         wallet:balances.get(uid),
         hand:r.hands&&(reveal||r.game==='nn'||r.seen[me])?r.hands[me]:[]};
     });
   }
-  return {request,tick,resume(){open();tick()},close(){db?.close();db=null}};
+  function activeCounts() {
+    open();
+    return db.prepare("SELECT game,phase,count(*) AS count FROM card_duels WHERE phase IN ('wait','play') GROUP BY game,phase").all();
+  }
+  return {request,tick,activeCounts,resume(){open();tick()},close(){db?.close();db=null}};
 }

@@ -10,8 +10,10 @@ import subprocess
 import tempfile
 import time
 
-BASE = "5f281c29ae4b38ee37606633e7aead19f16d9ffc"
-REV = "592fe96acd4341e72933cd79d321266edc1c28a1"
+BASE = "f8ad95a72b08cc9bbd345ad79f7b8c7475a22d0e"
+# Fingerprints of the two rebuilt artifacts from the previous live release.
+PREVIOUS_LIVE = {"dist-server/index.mjs":"741a88c3541f74a9147d7167ff1a3d4832eafbaa",
+                 "dist-server/index.mjs.map":"e00e0a8a83fb67ad7894eb483c3a2c8291760047"}
 PREFIX = "poker-online/"
 HOME_PAGE = "ssc-ops/web/index.html"
 UNIT = "poker.service"
@@ -69,7 +71,11 @@ def publish(items, backup, restart, verify):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--release", required=True, help="完整的目标 Git 提交号")
     args = parser.parse_args()
+    REV = args.release
+    if len(REV)!=40 or any(c not in "0123456789abcdef" for c in REV):
+        parser.error("请指定完整的提交号")
     repo = Path("/opt/poker-ssc")
     live = Path("/opt/ssc-ops/web/index.html")
     lock = open("/run/lock/poker-wallet-release.lock", "a")
@@ -99,7 +105,14 @@ def main():
         health = json.loads(http("/poker/api/health", "-f"))
         if health.get("ok") is not True or type(health.get("rooms")) is not int:
             raise RuntimeError("无法确认房间状态")
-        return health["rooms"]
+        if "games" in health:
+            if set(health["games"]) != {"doudizhu","paodekuai","zjh","nn"}:
+                raise RuntimeError("四种游戏的房间统计不完整")
+            return health["rooms"]
+        # The old process only reports the two RoomManager games.
+        wallet = Path(os.fsdecode(env.get(b"CARD_WALLET_DB") or b"/opt/ssc-ops/ssc_ops.db"))
+        with sqlite3.connect((root/wallet).resolve().as_uri()+"?mode=ro",uri=True) as db:
+            return health["rooms"] + db.execute("SELECT count(*) FROM card_duels WHERE phase IN ('wait','play')").fetchone()[0]
 
     with tempfile.TemporaryDirectory() as temp:
         stage = Path(temp)
@@ -121,7 +134,8 @@ def main():
                     if known.returncode == 0 and known.stdout == current:
                         break
                 else:
-                    raise RuntimeError("发现独立修改，已停止覆盖 " + str(dest))
+                    if run("git","hash-object",dest).decode().strip() != PREVIOUS_LIVE.get(str(rel)):
+                        raise RuntimeError("发现独立修改，已停止覆盖 " + str(dest))
             if dest == bundle:
                 run(node, "--check", source)
             items.append((source, dest))
@@ -175,9 +189,31 @@ def main():
         finally:
             dst.close()
             src.close()
-        if room_count() or live.read_bytes() != old.read_bytes():
-            raise RuntimeError("部署期间现场状态发生变化")
-        publish(items, backup, lambda: run("systemctl","restart",UNIT), verify)
+        gate = data/"pause-matchmaking"
+        with gate.open("x"):
+            pass
+        try:
+            if room_count() or live.read_bytes() != old.read_bytes():
+                raise RuntimeError("部署期间现场状态发生变化")
+            # First upgrade only: the old binary does not observe the drain marker.
+            # Stop its listener and verify its final room snapshot before replacing files.
+            if "games" not in json.loads(http("/poker/api/health", "-f")):
+                run("systemctl","stop",UNIT)
+                try:
+                    with sqlite3.connect((data/"poker.db").resolve().as_uri()+"?mode=ro",uri=True) as d:
+                        if d.execute("SELECT count(*) FROM rooms").fetchone()[0]:
+                            raise RuntimeError("停机检查发现房间，已取消更新")
+                    wallet = root / os.fsdecode(env.get(b"CARD_WALLET_DB") or b"/opt/ssc-ops/ssc_ops.db")
+                    with sqlite3.connect(wallet.resolve().as_uri()+"?mode=ro",uri=True) as d:
+                        if d.execute("SELECT count(*) FROM card_duels WHERE phase IN ('wait','play')").fetchone()[0]:
+                            raise RuntimeError("停机检查发现五人牌桌，已取消更新")
+                    publish(items, backup, lambda: run("systemctl","restart",UNIT), verify)
+                finally:
+                    run("systemctl","start",UNIT)
+            else:
+                publish(items, backup, lambda: run("systemctl","restart",UNIT), verify)
+        finally:
+            gate.unlink()
         print("已发布并验证",REV)
 
 

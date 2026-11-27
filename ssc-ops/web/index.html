@@ -440,14 +440,15 @@ function toast(t){const el=$('toast');el.textContent=t;el.classList.add('on');
   clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('on'),2000);}
 let _walletCache = { at: 0, data: null, p: null };
 function walletInfo(force){
-  const now = Date.now();
+  const now = Date.now(), token = S.token;
+  if(_walletCache.token!==token)_walletCache={token,at:0,data:null,p:null};
   if(!force && _walletCache.data && now - _walletCache.at < 800) return Promise.resolve(_walletCache.data);
   if(!force && _walletCache.p) return _walletCache.p;
   const p = api('/api/wallet/info').then(d=>{
-    _walletCache = { at: Date.now(), data: d, p: null };
+    if(token===S.token && _walletCache.p===p)_walletCache = { token, at: Date.now(), data: d, p: null };
     return d;
   }).catch(e=>{
-    _walletCache.p = null;
+    if(_walletCache.p===p)_walletCache.p = null;
     throw e;
   });
   _walletCache.p = p;
@@ -489,6 +490,7 @@ function loadHls(){
 }
 
 async function api(path,body,method,signal){
+  const requestToken=S.token;
   const h={'Content-Type':'application/json'};
   if(S.token)h['Authorization']='Bearer '+S.token;
   const r=await fetch(path,{method:method||(body?'POST':'GET'),headers:h,signal,
@@ -498,7 +500,7 @@ async function api(path,body,method,signal){
   if(j.code!==0){
     // 只在主站页面清登录态；poker 页面调主站接口 401 不代表主站掉线
     const onMainSite = !/\/poker\//.test(location.pathname) && !document.getElementById('root');
-    if((j.code===401 || /登录已失效|未登录/.test(j.msg||'')) && S.token && onMainSite){
+    if((r.status===401 || j.code===401 || /登录已失效|未登录/.test(j.msg||'')) && requestToken && requestToken===S.token && onMainSite){
       S.token=''; S.uid='';
       try{ clearPokerCredentials();localStorage.removeItem('token'); localStorage.removeItem('uid'); }catch(e){}
       try{ toast('登录已过期，请重新登录'); }catch(e){}
@@ -913,19 +915,22 @@ async function loadMe(){
     return;
   }
   try{
+    const token=S.token;
     const d=await api('/api/me');
+    const w=await walletInfo().catch(()=>null);
+    if(token!==S.token)return;
     // 顶部显示三钱包合计
-    let total = Number(d.balance);
-    try{
-      const w0 = await walletInfo();
-      total = Number(w0.center) + Number(w0.poker) + Number(w0.lot);
-    }catch(e){}
-    S._bal = total.toFixed(2);
-    $('uBal').textContent = S.eye ? S._bal : '****';
+    if(w){
+      S._bal=(Number(w.center)+Number(w.poker)+Number(w.lot)).toFixed(2);
+      $('uBal').textContent=S.eye ? S._bal : '****';
+    }else{
+      $('uBal').textContent='刷新失败';
+    }
     $('uName').textContent=d.uid;
     $('meName').textContent=d.uid;
     try{
       const v = await api('/api/vip/info');
+      if(token!==S.token)return;
       const tag = $('vipTag');
       if(tag){ if(v.level>0){ tag.textContent='VIP'+v.level; tag.style.display=''; } else { tag.style.display='none'; } }
       const lvTag = $('vipLevelTag');
@@ -933,29 +938,26 @@ async function loadMe(){
       const ev = $('vipEvent');
       if(ev) ev.style.display = v.level>=4 ? '' : 'none';
     }catch(e){}
+    if(token!==S.token)return;
     $('meBal').textContent=Number(d.balance).toFixed(2);
     $('meFrozen').textContent=Number(d.frozen).toFixed(2);
-    try{
-      const w = await walletInfo();
-      $('mePoker').textContent=Number(w.poker).toFixed(2);
-      $('meLotBal').textContent=Number(w.lot).toFixed(2);
-    }catch(e){ console.warn('钱包查询失败', e.message); }
+    $('mePoker').textContent=w ? Number(w.poker).toFixed(2) : '刷新失败';
+    $('meLotBal').textContent=w ? Number(w.lot).toFixed(2) : '刷新失败';
     $('meAgent').textContent=d.agent?('代理 '+d.agent):'普通会员';
     const lb = $('loginBtn');
     if(lb){ lb.textContent='退出'; lb.className='btn'; lb.classList.remove('hide'); lb.removeAttribute('style'); lb.setAttribute('onclick','doLogout()'); }
     $('ava').textContent=d.uid.slice(0,1).toUpperCase();
     if(lb){ lb.classList.remove('hide'); }
     if(S.view==='bet')$('betSub').textContent='余额 ￥'+S._bal;
-    try{
-      const w = await walletInfo();
+    if(w){
       const parts=[];
       if(Number(w.poker)>0) parts.push('棋牌 '+Number(w.poker).toFixed(2));
       if(Number(w.lot)>0) parts.push('彩票 '+Number(w.lot).toFixed(2));
       const tag=$('walletTag');
       if(parts.length){ tag.textContent=parts.join(' · '); tag.style.display=''; }
       else tag.style.display='none';
-    }catch(e){}
-  }catch(e){S.token='';clearPokerCredentials();localStorage.removeItem('token');}
+    }else{$('walletTag').style.display='none';}
+  }catch(e){if(S.token)$('uBal').textContent='刷新失败';}
 }
 
 const HOT_LOTS = new Set(['10015','10016','20001','20002','30001','40001','50001','60001']);
@@ -2877,8 +2879,8 @@ try{
   loadWinTicker();
   await loadMe();
   if(S.token)await loadBets();
-  setInterval(()=>{if(S.token)loadMe();},30000);
-  setInterval(()=>{if(S.view==='open')loadRanks();},20000);
+  setInterval(()=>{if(!document.hidden && S.token)loadMe();},30000);
+  setInterval(()=>{if(!document.hidden && S.view==='open')loadRanks();},20000);
 })();
 </script>
 

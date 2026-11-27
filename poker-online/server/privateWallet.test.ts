@@ -50,3 +50,22 @@ it('旧管理员凭据迁移，单点票据只兑换一次，个人数据仅本�
     expect(await (await fetch(url('me/balance'),{headers})).json()).toEqual({balance:0});
   }finally{await app.close();store.close();balance.mockRestore();vi.unstubAllEnvs();rmSync(dir,{recursive:true,force:true})}
 });
+
+it('维护标记阻止新建房间，解除后恢复匹配，健康接口覆盖四种游戏',async()=>{
+  const dir=mkdtempSync(join(tmpdir(),'drain-'));
+  const gate=join(dir,'pause-matchmaking');
+  const fs=await import('node:fs');
+  const app=await createApp({port:0,host:'127.0.0.1',dbFile:join(dir,'poker.db'),quiet:true});
+  const api='http://127.0.0.1:'+app.port+'/api/';
+  const create=()=>fetch(api+'rooms',{method:'POST',body:JSON.stringify({hostName:'测试'})});
+  try{
+    fs.writeFileSync(gate,'');
+    expect((await create()).status).toBe(503);
+    const h=await (await fetch(api+'health')).json();
+    expect(Object.keys(h.games).sort()).toEqual(['doudizhu','nn','paodekuai','zjh']);
+    expect(h.draining).toBe(true);
+    fs.unlinkSync(gate);
+    expect((await create()).status).toBe(200);
+    expect((await (await fetch(api+'health')).json()).rooms).toBe(1);
+  }finally{await app.close();rmSync(dir,{recursive:true,force:true});}
+});

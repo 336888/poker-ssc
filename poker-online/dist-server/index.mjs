@@ -113,7 +113,6 @@ var settle_exports = {};
 __export(settle_exports, {
   bookRound: () => bookRound,
   calcDeltas: () => calcDeltas,
-  chargeFee: () => chargeFee,
   getBalance: () => getBalance
 });
 import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
@@ -181,7 +180,7 @@ function calcDeltas(rows, base = 1, rake = 0.05, mode = "paodekuai", bombs = 0) 
   }
   return { mult, pot, deltas };
 }
-function bookRound(id, deltas) {
+function bookRound(id, deltas, memo = "\u724C\u5C40\u7ED3\u7B97") {
   const path = process.env.CARD_WALLET_DB || "/opt/ssc-ops/ssc_ops.db";
   if (!existsSync(path)) throw new Error("\u68CB\u724C\u94B1\u5305\u6570\u636E\u5E93\u672A\u63A5\u5165");
   const db = new DatabaseSync3(path);
@@ -197,7 +196,7 @@ function bookRound(id, deltas) {
       const row = db.prepare("UPDATE users SET poker_balance=round(poker_balance+?,2) WHERE uid=? AND poker_balance+?>=0 RETURNING poker_balance").get(delta, uid, delta);
       if (!row) throw new Error("\u94B1\u5305\u4E0D\u5B58\u5728\u6216\u4F59\u989D\u4E0D\u8DB3");
       const balance = Number(row.poker_balance);
-      if (delta) db.prepare("INSERT INTO flows(uid,kind,amount,balance,ref,memo,ctime) VALUES(?,?,?,?,?,?,?)").run(uid, delta > 0 ? "poker_win" : "poker_lose", delta, balance, id, "\u724C\u5C40\u7ED3\u7B97", Math.floor(Date.now() / 1e3));
+      if (delta) db.prepare("INSERT INTO flows(uid,kind,amount,balance,ref,memo,ctime) VALUES(?,?,?,?,?,?,?)").run(uid, delta > 0 ? "poker_win" : "poker_lose", delta, balance, id, memo, Math.floor(Date.now() / 1e3));
       return { uid, delta, balance };
     });
     db.prepare("INSERT INTO poker_round_receipts VALUES(?,?)").run(id, JSON.stringify(moves));
@@ -212,10 +211,6 @@ function bookRound(id, deltas) {
 }
 async function getBalance(uid) {
   return bridge(uid, "balance", 0);
-}
-async function chargeFee(uid, amount = 1) {
-  const r = await bridge(uid, "lose", amount);
-  return { uid, amount, balance: r?.balance };
 }
 var MAIN2, SECRET;
 var init_settle = __esm({
@@ -309,7 +304,7 @@ import { join as join2 } from "node:path";
 import { createHmac as createHmac3, randomBytes as randomBytes2 } from "node:crypto";
 import { existsSync as existsSync2, readFileSync, statSync } from "node:fs";
 import { createServer } from "node:http";
-import { extname, join, normalize as normalize2, resolve, sep } from "node:path";
+import { dirname as dirname2, extname, join, normalize as normalize2, resolve, sep } from "node:path";
 import { WebSocket, WebSocketServer } from "ws";
 
 // src/net/moderation.ts
@@ -1355,7 +1350,6 @@ var RoomServer = class _RoomServer {
     this.playerStats.set(uid, st);
   }
   /** 已扣过房间费的玩家（防重复 leave 重复扣费） */
-  chargedLeavers = /* @__PURE__ */ new Set();
   /** 消息频率窗口：防脚本高频刷操作 */
   msgWindow = /* @__PURE__ */ new Map();
   /** 上一手操作时间：防机器级操作速度 */
@@ -1536,15 +1530,11 @@ var RoomServer = class _RoomServer {
     this.changed();
   }
   leave(me) {
+    if (this.game && this.game.phase !== "finished" && this.room.status === "playing" && me.kind === "human") {
+      const pay = this.leavePayInfo(me.id);
+      this.onPlayerLeaveMidGame?.(me.id, me.name, pay.mult, pay.role);
+    }
     if (me.isHost) {
-      if (this.room.status === "playing" && me.kind === "human" && !this.chargedLeavers.has(me.id)) {
-        this.chargedLeavers.add(me.id);
-        const pay = this.leavePayInfo(me.id);
-        try {
-          this.onPlayerLeaveMidGame?.(me.id, me.name, pay.mult, pay.role);
-        } catch {
-        }
-      }
       this.destroy("\u623F\u4E3B\u5DF2\u89E3\u6563\u623F\u95F4");
       this.onChange?.(this);
       return;
@@ -1553,14 +1543,6 @@ var RoomServer = class _RoomServer {
     if (this.room.status === "playing") {
       me.online = false;
       me.autoPlay = true;
-      if (me.kind === "human" && !this.chargedLeavers.has(me.id)) {
-        this.chargedLeavers.add(me.id);
-        const pay = this.leavePayInfo(me.id);
-        try {
-          this.onPlayerLeaveMidGame?.(me.id, me.name, pay.mult, pay.role);
-        } catch {
-        }
-      }
     } else {
       this.room.players = this.room.players.filter((p) => p !== me);
       this.normalizeConfig();
@@ -2056,6 +2038,7 @@ var Store = class {
     this.db.exec(`
       PRAGMA journal_mode = WAL;
       PRAGMA secure_delete = ON;
+      CREATE TABLE IF NOT EXISTS pending_leave_fees (id TEXT PRIMARY KEY, uid TEXT NOT NULL, amount REAL NOT NULL, created_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS redeemed_sso (signature TEXT PRIMARY KEY, expires INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS rooms (code TEXT PRIMARY KEY, snapshot TEXT NOT NULL, updated_at INTEGER NOT NULL);
@@ -2085,6 +2068,13 @@ var Store = class {
   }
   setMeta(key, value) {
     this.db.prepare("INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(key, value);
+  }
+  queueLeaveFee(id, uid, amount) {
+    this.db.prepare("INSERT OR IGNORE INTO pending_leave_fees VALUES (?,?,?,?)").run(id, uid, amount, Date.now());
+    return Number(this.db.prepare("SELECT amount FROM pending_leave_fees WHERE id=?").get(id).amount);
+  }
+  completeLeaveFee(id) {
+    this.db.prepare("DELETE FROM pending_leave_fees WHERE id=?").run(id);
   }
   consumeSso(signature, expires, now) {
     this.db.prepare("DELETE FROM redeemed_sso WHERE expires < ?").run(now);
@@ -2346,13 +2336,14 @@ function cardTables(path, config, clock = Date.now) {
       }
     });
   }
-  function request(uid, body) {
+  function request(uid, body, admit) {
     return tx(() => {
       let r;
       if (body.action === "join") {
         if (!["zjh", "nn"].includes(body.game)) throw new Error("\u6E38\u620F\u65E0\u6548");
         r = get("SELECT state FROM card_duels WHERE phase IN ('wait','play') AND EXISTS(SELECT 1 FROM json_each(state,'$.users') WHERE value=?) LIMIT 1", uid);
         if (!r) {
+          admit?.();
           const user = db.prepare("SELECT poker_balance,status FROM users WHERE uid=?").get(uid);
           if (!user || user.status !== 1 || user.poker_balance < Math.max(1, config().minBal)) throw new Error("\u8D26\u6237\u4E0D\u53EF\u5165\u573A\u6216\u68CB\u724C\u4F59\u989D\u4E0D\u8DB3");
           r = get("SELECT state FROM card_duels WHERE game=? AND phase='wait' AND json_array_length(state,'$.users')=5 AND due>? ORDER BY due LIMIT 1", body.game, clock());
@@ -2393,6 +2384,8 @@ function cardTables(path, config, clock = Date.now) {
       const me = r.users.indexOf(uid), reveal = r.phase === "done" && Boolean(r.hands);
       const wallets = db.prepare("SELECT uid,poker_balance FROM users WHERE uid IN (SELECT value FROM json_each(?))").all(JSON.stringify(r.users));
       const balances = new Map(wallets.map((row) => [row.uid, row.poker_balance]));
+      const configured = config(r.game).names;
+      const names = Array.isArray(configured) && configured.length ? configured : tableNames;
       return {
         id: r.id,
         rev: r.rev,
@@ -2401,7 +2394,7 @@ function cardTables(path, config, clock = Date.now) {
         due: r.due,
         me,
         seats: r.users.map((u, i) => ({
-          name: u ?? (r.phase === "wait" ? null : tableNames[i]),
+          name: u ?? (r.phase === "wait" ? null : names[i % names.length]),
           balance: balances.get(u) ?? null,
           seat: i,
           kind: u ? "\u771F\u4EBA" : r.phase === "wait" ? "\u7A7A\u4F4D" : "\u673A\u5668\u4EBA",
@@ -2410,6 +2403,7 @@ function cardTables(path, config, clock = Date.now) {
           paid: r.paid[i],
           delta: r.delta?.[i],
           hand: reveal ? r.hands[i] : [],
+          handCount: r.hands?.[i]?.length ?? 0,
           ready: r.levels?.[i] != null
         })),
         turn: r.turn === me,
@@ -2423,7 +2417,11 @@ function cardTables(path, config, clock = Date.now) {
       };
     });
   }
-  return { request, tick, resume() {
+  function activeCounts() {
+    open();
+    return db.prepare("SELECT game,phase,count(*) AS count FROM card_duels WHERE phase IN ('wait','play') GROUP BY game,phase").all();
+  }
+  return { request, tick, activeCounts, resume() {
     open();
     tick();
   }, close() {
@@ -2565,18 +2563,17 @@ var RoomManager = class {
       this.store.addHistory(record);
       server.broadcastAll();
     };
-    server.onPlayerLeaveMidGame = (uid, name, mult, role) => {
-      if (!verified(uid)) return;
-      if (!/^[A-Za-z0-9_]{3,24}$/.test(uid) || /^(host|p|sim)_/.test(uid)) return;
-      void (async () => {
-        try {
-          const amount = leaveAmount(mult, role);
-          const r = await chargeFee(uid, amount);
-          log("\u4E2D\u9014\u9000\u51FA\u8D54\u4ED8", code, name, `\u500D\u6570${mult} \u89D2\u8272${role || "-"} \u6263${amount}\u5143 \u4F59\u989D${r.balance}`);
-        } catch (e) {
-          log("\u6263\u8D39\u5931\u8D25", code, name, e.message);
-        }
-      })();
+    server.onPlayerLeaveMidGame = (uid, _name, mult, role) => {
+      const game = server.game;
+      if (!game || !verified(uid)) return;
+      const id = ["leave", code, server.room.createdAt, game.startedAt, game.round, uid].join(":");
+      const amount = this.store.queueLeaveFee(id, uid, leaveAmount(mult, role));
+      try {
+        bookRound(id, [{ uid, delta: -amount }], "\u4E2D\u9014\u9000\u684C");
+        this.store.completeLeaveFee(id);
+      } catch (error) {
+        log("\u9000\u684C\u8D39\u7528\u5F85\u6838\u5BF9", id, String(error));
+      }
     };
     server.onModeration = (entry) => {
       log("\u62E6\u622A\u804A\u5929", code, entry.name, entry.reason);
@@ -2753,6 +2750,10 @@ async function createApp(opts) {
   const admin = new AdminAuth(verifier);
   const rooms = new RoomManager(store, opts.maxRooms ?? 500);
   const walletPath = process.env.CARD_WALLET_DB || "/opt/ssc-ops/ssc_ops.db";
+  const draining = () => existsSync2(join(dirname2(opts.dbFile), "pause-matchmaking"));
+  const admit = () => {
+    if (draining()) throw new HttpError(503, "\u6682\u505C\u65B0\u5339\u914D\uFF0C\u7EF4\u62A4\u7ED3\u675F\u540E\u53EF\u91CD\u65B0\u5165\u573A");
+  };
   const readTargets = () => JSON.parse(store.getMeta("bot_targets") || "{}");
   useTargets(readTargets());
   const duels = cardTables(walletPath, (game) => ({ ...rtCfg(), botRate: gameRate(game) }));
@@ -2839,8 +2840,9 @@ async function createApp(opts) {
       if (!uid) throw new HttpError(401, "\u8BF7\u5148\u767B\u5F55");
       if (!existsSync2(walletPath)) throw new HttpError(503, "\u68CB\u724C\u94B1\u5305\u6570\u636E\u5E93\u672A\u63A5\u5165");
       try {
-        return send(res, 200, duels.request(uid, b));
+        return send(res, 200, duels.request(uid, b, admit));
       } catch (e) {
+        if (e instanceof HttpError) throw e;
         const msg = e.message;
         if (/sqlite|database|SQLITE|table:|readonly/i.test(msg)) {
           log("\u68CB\u724C\u94B1\u5305\u5F02\u5E38", msg);
@@ -2911,10 +2913,19 @@ async function createApp(opts) {
         throw new HttpError(503, "\u68CB\u724C\u94B1\u5305\u6682\u4E0D\u53EF\u7528\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5");
       }
     }
-    if (method === "GET" && path === "/health") return send(res, 200, { ok: true, rooms: rooms.size });
+    if (method === "GET" && path === "/health") {
+      const games = { doudizhu: { wait: 0, play: 0 }, paodekuai: { wait: 0, play: 0 }, zjh: { wait: 0, play: 0 }, nn: { wait: 0, play: 0 } };
+      for (const room of rooms.summaries()) games[room.mode][room.status === "playing" ? "play" : "wait"]++;
+      if (existsSync2(walletPath)) {
+        for (const row of duels.activeCounts()) games[row.game][row.phase] = row.count;
+      } else if (process.env.NODE_ENV === "production") throw new HttpError(503, "\u65E0\u6CD5\u6838\u5BF9\u4E94\u4EBA\u724C\u684C");
+      const total = Object.values(games).reduce((sum, g) => sum + g.wait + g.play, 0);
+      return send(res, 200, { ok: true, rooms: total, games, draining: draining() });
+    }
     if (method === "POST" && path === "/rooms") {
       if (!createLimiter.allow(ip)) throw new HttpError(429, "\u521B\u5EFA\u623F\u95F4\u592A\u9891\u7E41\uFF0C\u8BF7\u7A0D\u540E\u518D\u8BD5");
       const body = await readJson(req);
+      admit();
       const name = cleanName(body.hostName);
       if (!name) throw new HttpError(400, "\u8BF7\u8F93\u5165\u6635\u79F0");
       const wantUid0 = walletIdentity(req, body.uid);
@@ -2938,6 +2949,7 @@ async function createApp(opts) {
       const room = rooms.get(code);
       if (!room || room.closed) throw new HttpError(404, "\u623F\u95F4\u4E0D\u5B58\u5728\uFF0C\u8BF7\u68C0\u67E5\u9080\u8BF7\u7801");
       const body = await readJson(req);
+      admit();
       const name = cleanName(body.name);
       if (!name) throw new HttpError(400, "\u8BF7\u8F93\u5165\u6635\u79F0");
       const wantUidJ = walletIdentity(req, body.uid);

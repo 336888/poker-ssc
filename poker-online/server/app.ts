@@ -3,7 +3,7 @@
 import { createHmac, randomBytes } from 'node:crypto';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { IncomingMessage, Server, ServerResponse, createServer } from 'node:http';
-import { extname, join, normalize, resolve, sep } from 'node:path';
+import { dirname, extname, join, normalize, resolve, sep } from 'node:path';
 import { WebSocket, WebSocketServer } from 'ws';
 import { containsBlocked } from '../src/net/moderation';
 import { normalizeCode } from '../src/net/inviteCode';
@@ -82,6 +82,8 @@ export async function createApp(opts: AppOptions): Promise<App> {
   const admin = new AdminAuth(verifier);
   const rooms = new RoomManager(store, opts.maxRooms ?? 500);
   const walletPath = process.env.CARD_WALLET_DB || '/opt/ssc-ops/ssc_ops.db';
+  const draining = () => existsSync(join(dirname(opts.dbFile), 'pause-matchmaking'));
+  const admit = () => { if (draining()) throw new HttpError(503, '暂停新匹配，维护结束后可重新入场'); };
   const readTargets=():BotTargets=>JSON.parse(store.getMeta('bot_targets')||'{}');
   useTargets(readTargets());
   const duels = cardTables(walletPath,game=>({...rtCfg(),botRate:gameRate(game)}));
@@ -172,8 +174,8 @@ export async function createApp(opts: AppOptions): Promise<App> {
       const uid=walletIdentity(req);
       if(!uid) throw new HttpError(401,'请先登录');
       if(!existsSync(walletPath)) throw new HttpError(503,'棋牌钱包数据库未接入');
-      try{return send(res,200,duels.request(uid,b))}
-      catch(e){const msg=(e as Error).message;
+      try{return send(res,200,duels.request(uid,b,admit))}
+      catch(e){if(e instanceof HttpError)throw e;const msg=(e as Error).message;
         if(/sqlite|database|SQLITE|table:|readonly/i.test(msg)){log('棋牌钱包异常',msg);throw new HttpError(503,'棋牌钱包暂不可用')}
         throw new HttpError(400,msg);
       }
@@ -247,11 +249,20 @@ export async function createApp(opts: AppOptions): Promise<App> {
       }
     }
 
-    if (method === 'GET' && path === '/health') return send(res, 200, { ok: true, rooms: rooms.size });
+    if (method === 'GET' && path === '/health') {
+      const games = {doudizhu:{wait:0,play:0},paodekuai:{wait:0,play:0},zjh:{wait:0,play:0},nn:{wait:0,play:0}};
+      for (const room of rooms.summaries()) games[room.mode][room.status === 'playing' ? 'play' : 'wait']++;
+      if (existsSync(walletPath)) {
+        for (const row of duels.activeCounts()) games[row.game][row.phase] = row.count;
+      } else if (process.env.NODE_ENV === 'production') throw new HttpError(503, '无法核对五人牌桌');
+      const total = Object.values(games).reduce((sum,g) => sum + g.wait + g.play, 0);
+      return send(res, 200, {ok:true, rooms:total, games, draining:draining()});
+    }
 
     if (method === 'POST' && path === '/rooms') {
       if (!createLimiter.allow(ip)) throw new HttpError(429, '创建房间太频繁，请稍后再试');
       const body = await readJson(req);
+      admit();
       const name = cleanName(body.hostName);
       if (!name) throw new HttpError(400, '请输入昵称');
       const wantUid0 = walletIdentity(req,body.uid);
@@ -276,6 +287,7 @@ export async function createApp(opts: AppOptions): Promise<App> {
       const room = rooms.get(code);
       if (!room || room.closed) throw new HttpError(404, '房间不存在，请检查邀请码');
       const body = await readJson(req);
+      admit();
       const name = cleanName(body.name);
       if (!name) throw new HttpError(400, '请输入昵称');
       const wantUidJ = walletIdentity(req,body.uid);

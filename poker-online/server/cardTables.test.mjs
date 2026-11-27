@@ -25,6 +25,7 @@ test('五人匹配、单次扣款、断线恢复、机器人补位及超时结�
       assert.deepEqual(r.seats.map(s=>s.name),ids);
       for(const seat of r.seats) assert.equal(seat.balance,db.prepare('SELECT poker_balance FROM users WHERE uid=?').get(seat.name).poker_balance);
       assert.equal(r.phase,'play');
+      assert.deepEqual(service.activeCounts().map(row=>[row.game,row.phase,row.count]),[[game,'play',1]]);
       let moves=0;
       while(r.phase==='play'){
         const actor=r.seats.find(s=>s.acting).seat;
@@ -43,7 +44,7 @@ test('五人匹配、单次扣款、断线恢复、机器人补位及超时结�
       assert.equal(new Set(r.seats.flatMap(s=>s.hand)).size,game==='nn'?25:15);
       assert.equal(db.prepare('SELECT sum(poker_balance) AS n FROM users').get().n,500);
     }
-    let a=send('a','join');let b=send('b','join');assert.equal(send('b','cancel',b).phase,'cancelled');
+    let a=send('a','join');assert.equal(service.activeCounts()[0].phase,'wait');let b=send('b','join');assert.equal(send('b','cancel',b).phase,'cancelled');
     a=send('a','join');now+=8100;service.close();service=open();service.resume();
     a=send('a','state',a);assert.equal(a.seats.filter(s=>s.kind==='机器人').length,4);
     for(let i=0;i<55&&a.phase!=='done';i++){now+=46000;service.tick();a=send('a','state',a)}
