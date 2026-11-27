@@ -91,12 +91,34 @@ async function request(action,target,trio=[]){
 }
 async function init(){
   paint();
+  const siteToken = localStorage.getItem('token');
+  let ticket;
   if(query.has('sso')){
-    const [uid,ts,sig]=query.get('sso').split('.');
-    const r=await fetch(api+'/sso',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid,ts:Number(ts),sig}),signal:AbortSignal.timeout(10000)});
-    const d=await r.json();if(!r.ok||!d.cardToken)throw Error(d.error||'钱包认证失败');
+    const [uid, ts, sig] = query.get('sso').split('.');
+    ticket = {uid, ts:Number(ts), sig};
+  } else if(!token && siteToken){
+    const res = await fetch('/api/poker/sso', {
+      headers:{Authorization:'Bearer '+siteToken}, cache:'no-store', signal:AbortSignal.timeout(10000)
+    });
+    const result = await res.json();
+    if(!res.ok || result.code !== 0 || !result.data?.sig) throw Error(result.msg || '棋牌登录未完成，请返回大厅重试');
+    ticket = result.data;
+  }
+  if(ticket){
+    const {uid,ts,sig} = ticket;
+    const res = await fetch(api+'/sso', {method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({uid,ts:Number(ts),sig}),cache:'no-store',signal:AbortSignal.timeout(10000)});
+    const identity = await res.json();
+    if(!res.ok || !identity.cardToken || identity.uid!==uid) throw Error(identity.error || '棋牌登录失败');
+    if(localStorage.getItem('token')!==siteToken) throw Error('登录账号已切换，请返回大厅重试');
     if(sessionStorage.getItem('card.uid')!==uid)sessionStorage.removeItem('card.room');
-    token=d.cardToken;sessionStorage.setItem('card.uid',uid);sessionStorage.setItem('card.auth',token);query.delete('sso');history.replaceState(null,'','?'+query);
+    token=identity.cardToken;
+    sessionStorage.setItem('card.uid',uid);
+    sessionStorage.setItem('card.auth',token);
+    if(query.has('sso')){
+      query.delete('sso');
+      history.replaceState(null,'','?'+query);
+    }
   }
   if(!token)throw Error('请从主站棋牌大厅登录进入');
   authenticated=true;if(sessionStorage.getItem('card.room'))await request('state');else paint();
