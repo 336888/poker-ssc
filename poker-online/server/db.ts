@@ -88,6 +88,11 @@ export class Store {
       .run(record.id, record.roomCode, record.mode, record.endedAt, record.players.map((p) => p.name).join(' '), JSON.stringify(record));
   }
 
+  historyById(id: string): GameRecord | null {
+    const row = this.db.prepare('SELECT record FROM history WHERE id = ?').get(id);
+    return row ? JSON.parse(String(row.record)) : null;
+  }
+
   listHistory(limit = 500): GameRecord[] {
     const rows = this.db.prepare('SELECT record FROM history ORDER BY ended_at DESC LIMIT ?').all(limit) as Array<{ record: string }>;
     return rows.map((r) => JSON.parse(r.record) as GameRecord);

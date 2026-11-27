@@ -16,6 +16,10 @@ export function putResult(uid: string, r: SettleResult) {
   for (const [k, v] of map) if (now - v.at > TTL) map.delete(k);
 }
 
+export function clearResult(uid: string) {
+  map.delete(uid);
+}
+
 export function getResult(uid: string): SettleResult | null {
   const r = map.get(uid);
   if (!r) return null;

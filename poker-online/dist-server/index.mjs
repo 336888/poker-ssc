@@ -13,6 +13,24 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
+// src/game/walletFees.ts
+function runningMultiplier(bombs) {
+  return 2 ** Math.max(0, Math.min(6, bombs || 0));
+}
+function leaveMultiplier(mode, bombs, handCounts) {
+  if (mode === "paodekuai") return runningMultiplier(bombs);
+  const max = Math.max(0, ...handCounts);
+  return max >= 15 ? 4 : max >= 10 ? 2 : 1;
+}
+function leaveAmount(multiplier2, role) {
+  return multiplier2 * (role === "landlord" ? 2 : 1);
+}
+var init_walletFees = __esm({
+  "src/game/walletFees.ts"() {
+    "use strict";
+  }
+});
+
 // server/rtcfg.ts
 var rtcfg_exports = {};
 __export(rtcfg_exports, {
@@ -126,7 +144,7 @@ function multiplier(rows) {
   return 1;
 }
 function calcDeltas(rows, base = 1, rake = 0.05, mode = "paodekuai", bombs = 0) {
-  const mult = mode === "paodekuai" ? Math.pow(2, Math.max(0, Math.min(6, Number(bombs) || 0))) : multiplier(rows);
+  const mult = mode === "paodekuai" ? runningMultiplier(bombs) : multiplier(rows);
   const pot = base * mult;
   const deltas = [];
   if (mode === "doudizhu") {
@@ -203,6 +221,7 @@ var MAIN2, SECRET;
 var init_settle = __esm({
   "server/settle.ts"() {
     "use strict";
+    init_walletFees();
     MAIN2 = process.env.MAIN_API || "http://127.0.0.1:8090";
     SECRET = process.env.POKER_SSO_SECRET || "";
   }
@@ -213,6 +232,7 @@ var results_exports = {};
 __export(results_exports, {
   bindStore: () => bindStore,
   bumpStreak: () => bumpStreak,
+  clearResult: () => clearResult,
   getResult: () => getResult,
   getStreak: () => getStreak,
   putResult: () => putResult
@@ -221,6 +241,9 @@ function putResult(uid, r) {
   map.set(uid, r);
   const now = Date.now();
   for (const [k, v] of map) if (now - v.at > TTL) map.delete(k);
+}
+function clearResult(uid) {
+  map.delete(uid);
 }
 function getResult(uid) {
   const r = map.get(uid);
@@ -469,6 +492,9 @@ function generateInviteCode(exists, length = 6) {
 function normalizeCode(input) {
   return input.toUpperCase().replace(/[^A-Z0-9]/g, "");
 }
+
+// src/net/roomServer.ts
+init_walletFees();
 
 // src/game/cards.ts
 var RANK_TWO = 15;
@@ -1546,8 +1572,7 @@ var RoomServer = class _RoomServer {
     const g = this.game;
     if (!g) return { mult: 1 };
     const lefts = this.room.players.map((p) => g.hands?.[p.id]?.length ?? 0);
-    const maxLeft = Math.max(0, ...lefts);
-    const mult = maxLeft >= 15 ? 4 : maxLeft >= 10 ? 2 : 1;
+    const mult = leaveMultiplier(g.mode, g.bombs, lefts);
     const seatIdx = g.seats.findIndex((x) => x.id === playerId);
     const role = g.mode !== "doudizhu" || g.landlordSeat == null ? void 0 : g.landlordSeat === seatIdx ? "landlord" : "farmer";
     return { mult, role };
@@ -2084,6 +2109,10 @@ var Store = class {
   addHistory(record) {
     this.db.prepare("INSERT OR REPLACE INTO history (id, room_code, mode, ended_at, players, record) VALUES (?, ?, ?, ?, ?, ?)").run(record.id, record.roomCode, record.mode, record.endedAt, record.players.map((p) => p.name).join(" "), JSON.stringify(record));
   }
+  historyById(id) {
+    const row = this.db.prepare("SELECT record FROM history WHERE id = ?").get(id);
+    return row ? JSON.parse(String(row.record)) : null;
+  }
   listHistory(limit = 500) {
     const rows = this.db.prepare("SELECT record FROM history ORDER BY ended_at DESC LIMIT ?").all(limit);
     return rows.map((r) => JSON.parse(r.record));
@@ -2407,6 +2436,7 @@ function cardTables(path, config, clock = Date.now) {
 init_rtcfg();
 
 // server/rooms.ts
+init_walletFees();
 init_settle();
 init_rtcfg();
 init_results();
@@ -2519,6 +2549,7 @@ var RoomManager = class {
             }
           }
         } catch (e) {
+          for (const move of payable) clearResult(move.uid);
           record.walletStatus = "pending";
           record.walletMoves = payable;
           record.walletReason = e instanceof Error ? e.message : "\u94B1\u5305\u5165\u8D26\u5931\u8D25";
@@ -2539,9 +2570,7 @@ var RoomManager = class {
       if (!/^[A-Za-z0-9_]{3,24}$/.test(uid) || /^(host|p|sim)_/.test(uid)) return;
       void (async () => {
         try {
-          const base = 1;
-          const pot = base * (mult || 1);
-          const amount = role === "landlord" ? pot * 2 : pot;
+          const amount = leaveAmount(mult, role);
           const r = await chargeFee(uid, amount);
           log("\u4E2D\u9014\u9000\u51FA\u8D54\u4ED8", code, name, `\u500D\u6570${mult} \u89D2\u8272${role || "-"} \u6263${amount}\u5143 \u4F59\u989D${r.balance}`);
         } catch (e) {
@@ -2824,6 +2853,14 @@ async function createApp(opts) {
       const u = currentWalletUser(req);
       res.setHeader("Cache-Control", "private, no-store");
       const { getResult: getResult2, getStreak: getStreak2 } = await Promise.resolve().then(() => (init_results(), results_exports));
+      const roundId = new URL(req.url || "/", "http://local").searchParams.get("roundId");
+      if (roundId !== null) {
+        const record = store.historyById(roundId);
+        const move = record?.walletMoves?.find((row) => row.uid === u);
+        if (!move || !record) return send(res, 200, { roundId, status: "none" });
+        if (record.walletStatus !== "booked") return send(res, 200, { roundId, status: "pending" });
+        return send(res, 200, { roundId, status: "booked", delta: move.delta, balance: move.balance, streak: getStreak2(u) });
+      }
       const r = getResult2(u) ?? {};
       return send(res, 200, { ...r, streak: getStreak2(u) });
     }
@@ -2833,9 +2870,13 @@ async function createApp(opts) {
       try {
         const { getBalance: getBalance2 } = await Promise.resolve().then(() => (init_settle(), settle_exports));
         const r = await getBalance2(uid);
-        send(res, 200, { balance: Number((r && r.balance) ?? 0) });
-      } catch (e) {
-        send(res, 200, { balance: null, error: e.message });
+        const raw = r?.balance;
+        if (typeof raw !== "number" && !(typeof raw === "string" && raw.trim()) || !Number.isFinite(Number(raw))) {
+          throw new Error("invalid balance");
+        }
+        send(res, 200, { balance: Number(raw) });
+      } catch {
+        send(res, 503, { balance: null, error: "\u4F59\u989D\u6682\u65F6\u65E0\u6CD5\u5237\u65B0" });
       }
       return;
     }

@@ -1,3 +1,4 @@
+import { leaveMultiplier } from '../game/walletFees';
 // 房间服务器：权威的房间与牌局逻辑。
 // 第一阶段运行在房主的浏览器标签页中；后续可以几乎原样移植到 Node.js 后端。
 
@@ -486,8 +487,7 @@ export class RoomServer {
     const g = this.game;
     if (!g) return { mult: 1 };
     const lefts = this.room.players.map((p) => g.hands?.[p.id]?.length ?? 0);
-    const maxLeft = Math.max(0, ...lefts);
-    const mult = maxLeft >= 15 ? 4 : maxLeft >= 10 ? 2 : 1;
+    const mult = leaveMultiplier(g.mode, g.bombs, lefts);
     const seatIdx = g.seats.findIndex((x) => x.id === playerId);
     // 还没定地主时按普通赔（不算地主翻倍）
     const role = g.mode !== 'doudizhu' || g.landlordSeat == null ? undefined

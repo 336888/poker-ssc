@@ -1,3 +1,4 @@
+import { runningMultiplier } from '../src/game/walletFees';
 // 资金结算：把牌局结果同步到主站余额
 // 规则：底分 1 元；第 1 名 +2、第 3 名 -2（第 2 名不变）；赢家抽水 5%
 
@@ -56,7 +57,7 @@ export function calcDeltas(
   // 倍数：跑得快按炸弹数翻倍（1 炸 2 倍 / 2 炸 4 倍 / 3 炸 8 倍）
   // 斗地主仍按剩余牌差
   const mult = mode === "paodekuai"
-    ? Math.pow(2, Math.max(0, Math.min(6, Number(bombs) || 0)))
+    ? runningMultiplier(bombs)
     : multiplier(rows);
   const pot = base * mult;
   const deltas: { uid: string; delta: number }[] = [];

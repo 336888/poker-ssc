@@ -1,6 +1,6 @@
-import { walletRead } from '../net/sso';
+import { useWalletBalance } from '../net/useWalletBalance';
+
 import { GameEntry } from '../components/GameEntry';
-import { useEffect, useState } from 'react';
 import { ChatBubble, ChatButton, useChatBubbles, useChatSound } from '../components/Chat';
 import { Avatar } from '../components/common';
 import { ServerView } from '../net/protocol';
@@ -8,18 +8,7 @@ import { useRoom } from '../store/RoomContext';
 import { useNow } from './GameTable';
 
 export function Lobby({ view }: { view: ServerView }) {
-  const [selfBal, setSelfBal] = useState<number | null>(null);
-  useEffect(() => {
-    let alive = true;
-    const load = () => {
-      walletRead('/me/balance')
-        .then((d) => { if (alive && d && typeof d.balance === 'number') setSelfBal(d.balance); })
-        .catch(() => {});
-    };
-    load();
-    const t = setInterval(load, 5000);
-    return () => { alive = false; clearInterval(t); };
-  }, []);
+  const walletBalance = useWalletBalance(view.you);
   const { send, leaveRoom } = useRoom();
   const { room, you } = view;
   const now = useNow(500);
@@ -71,7 +60,8 @@ export function Lobby({ view }: { view: ServerView }) {
                 {p.isHost && <span className="mini-host">房主</span>}
               </span>
               {(() => {
-                const v = p.id === you && selfBal !== null ? selfBal : (typeof (p as any).balance === 'number' ? (p as any).balance : null);
+                if (p.id === you && walletBalance !== null) return <span className="mini-bal">{walletBalance}</span>;
+                const v = (typeof (p as any).balance === 'number' ? (p as any).balance : null);
                 return v !== null ? <span className="mini-bal">￥{v.toFixed(2)}</span> : null;
               })()}
             </div>

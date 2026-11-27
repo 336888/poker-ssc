@@ -35,5 +35,18 @@ it('旧管理员凭据迁移，单点票据只兑换一次，个人数据仅本�
       expect((await fetch(url(path),{headers})).status).toBe(200);
     }
     expect(balance).toHaveBeenLastCalledWith(uid);
+    for (const [id, status, delta] of [['first','booked',8],['second','pending',-4]] as const) {
+      store.addHistory({id, roomCode:'ABC123', mode:'paodekuai', endedAt:Date.now(),
+        players:[], walletStatus:status, walletMoves:[{uid,delta,balance:258}]} as unknown as import('../src/net/adminHistory').GameRecord);
+    }
+    const read = (id:string) => fetch(url('lastresult?roundId='+id),{headers}).then(r=>r.json());
+    expect(await read('first')).toMatchObject({roundId:'first',status:'booked',delta:8});
+    expect(await read('second')).toEqual({roundId:'second',status:'pending'});
+    expect(await read('unknown')).toEqual({roundId:'unknown',status:'none'});
+    balance.mockRejectedValueOnce(new Error('bridge offline'));
+    balance.mockResolvedValueOnce({balance:null});
+    for(let i=0;i<2;i++) expect((await fetch(url('me/balance'),{headers})).status).toBe(503);
+    balance.mockResolvedValueOnce({balance:0});
+    expect(await (await fetch(url('me/balance'),{headers})).json()).toEqual({balance:0});
   }finally{await app.close();store.close();balance.mockRestore();vi.unstubAllEnvs();rmSync(dir,{recursive:true,force:true})}
 });

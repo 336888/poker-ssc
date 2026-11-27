@@ -1,3 +1,5 @@
+import { leaveAmount, leaveMultiplier } from '../game/walletFees';
+import { useWalletBalance } from '../net/useWalletBalance';
 import { walletRead } from '../net/sso';
 import { HallReturn } from '../components/GameEntry';
 import { CSSProperties, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
@@ -146,21 +148,7 @@ export function GameTable({ view }: { view: ServerView }) {
   const myBidTurn = bidding && game.turn === mySeat && ready;
   const muted = useMuted();
   // 自己的棋牌钱包余额（直接查主站，不依赖房间广播）
-  const [myBalance, setMyBalance] = useState<number | null>(null);
-  useEffect(() => {
-    let alive = true;
-    const load = () => {
-      walletRead('/me/balance')
-        .then((d) => {
-          if (alive && d && typeof d.balance === 'number') setMyBalance(d.balance);
-        })
-        .catch(() => {});
-    };
-    load();
-    const t = setInterval(load, 5000);
-    return () => { alive = false; clearInterval(t); };
-  }, [game.round]);
-
+  const walletBalance = useWalletBalance(view.you);
   // ------------------------------------------------------------ 音效
   const prevLogLen = useRef(game.log.length);
   useEffect(() => {
@@ -486,7 +474,8 @@ export function GameTable({ view }: { view: ServerView }) {
             {roleOf(mySeat) && <span className={`role role--${roleOf(mySeat)}`}>{roleOf(mySeat) === 'landlord' ? '地主' : '农民'}</span>}
             <span className="muted small">{visibleHand.length} 张</span>
             {(() => {
-              const v = myBalance !== null ? myBalance : (typeof (me as any).balance === 'number' ? (me as any).balance : null);
+              if (walletBalance !== null) return <span className="me__bal">{walletBalance}</span>;
+              const v = (typeof (me as any).balance === 'number' ? (me as any).balance : null);
               return v !== null ? <span className="me__bal">￥{v.toFixed(2)}</span> : null;
             })()}
             {me.autoPlay && <span className="tag tag--auto">托管中</span>}
@@ -572,7 +561,7 @@ export function GameTable({ view }: { view: ServerView }) {
         </div>
       )}
 
-      {game.phase === 'finished' && <ResultModal view={view} isHost={isHost} onLeave={returnToHall} send={send} />}
+      {game.phase === 'finished' && <ResultModal key={game.startedAt + ":" + game.round + ":" + you} view={view} isHost={isHost} onLeave={returnToHall} send={send} />}
 
       {showLog && (
         <Modal onClose={() => setShowLog(false)}>
@@ -601,7 +590,7 @@ export function GameTable({ view }: { view: ServerView }) {
       {confirmLeave && (
         <Modal onClose={() => setConfirmLeave(false)}>
           <h2>退出牌局？</h2>
-          <p className="muted">退出后本局将自动托管你的手牌，并按当前倍数扣款。</p>
+          <p className="muted">{isHost ? '房主退出后将解散房间。' : '退出后本局将自动托管你的手牌。'}{walletBalance !== null && <>按当前牌面，预计退桌扣款 ￥{leaveAmount(leaveMultiplier(game.mode, game.bombs, Object.values(game.handCounts)), roleOf(mySeat) || undefined).toFixed(2)}。</>}</p>
           <div className="row-end">
             <button className="btn btn--ghost" onClick={() => setConfirmLeave(false)}>
               取消
@@ -627,20 +616,27 @@ function ResultModal({ view, isHost, onLeave, send }: { view: ServerView; isHost
   useEffect(() => playSound(iWon ? 'win' : 'lose'), [iWon]);
 
   // 本局输赢金额 + 当前余额（后端结算后缓存）
+  const roundId = [view.room.code, game.round, game.startedAt].join("-");
+  const [receiptMessage, setReceiptMessage] = useState("");
   const [money, setMoney] = useState<{ delta?: number; balance?: number | null; streak?: number } | null>(null);
   const [pnl, setPnl] = useState<number | null>(null);
   const [shown, setShown] = useState(0);
   useEffect(() => {
     let alive = true;
-    walletRead('/lastresult')
-      .then((d) => { if (alive && d && typeof d.delta === 'number') setMoney(d); })
-      .catch(() => {});
+    walletRead('/lastresult', roundId)
+      .then((d) => {
+        if (!alive) return;
+        if (d?.roundId === roundId && d.status === 'booked' && typeof d.delta === 'number') setMoney(d);
+        else if (d?.status === 'pending') setReceiptMessage('本局钱包待核对');
+        else if (!d && sessionStorage.getItem('poker.walletToken')) setReceiptMessage('本局回执暂时无法读取');
+      })
+      .catch(() => { if (alive) setReceiptMessage('本局回执暂时无法读取'); });
     fetch(`/api/poker/pnl?uid=${encodeURIComponent(you)}`)
       .then((r) => r.json())
       .then((d) => { if (alive && d && d.code === 0) setPnl(Number(d.data.pnl)); })
       .catch(() => {});
     return () => { alive = false; };
-  }, [you, game.round]);
+  }, [you, roundId]);
 
   // 结算后通知主站刷新余额（跨标签）
   useEffect(() => {
@@ -712,6 +708,7 @@ function ResultModal({ view, isHost, onLeave, send }: { view: ServerView; isHost
             </li>
           ))}
         </ol>
+        {receiptMessage && <p role="status">{receiptMessage}</p>}
         {money && (
           <div className="result__money">
             <span className={shown > 0.004 ? 'money--up' : shown < -0.004 ? 'money--down' : ''}>

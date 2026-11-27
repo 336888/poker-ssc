@@ -58,10 +58,10 @@ export function fingerprint(): string {
   return fp;
 }
 
-export function walletRead(path:'/me/balance'|'/lastresult') {
+export function walletRead(path:'/me/balance'|'/lastresult', roundId?:string) {
   const token=sessionStorage.getItem('poker.walletToken');
   if(!token)return Promise.resolve(null);
   const base=(import.meta.env.VITE_API_URL as string)||'/api';
-  return fetch(base+path,{headers:{Authorization:'Bearer '+token},cache:'no-store'})
+  return fetch(base+path+(roundId ? '?roundId='+encodeURIComponent(roundId) : ''),{signal:AbortSignal.timeout(8000),headers:{Authorization:'Bearer '+token},cache:'no-store'})
     .then(r=>r.ok?r.json():null);
 }

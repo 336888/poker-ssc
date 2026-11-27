@@ -183,6 +183,14 @@ export async function createApp(opts: AppOptions): Promise<App> {
       const u=currentWalletUser(req);
       res.setHeader('Cache-Control','private, no-store');
       const { getResult, getStreak } = await import('./results');
+      const roundId = new URL(req.url || '/', 'http://local').searchParams.get('roundId');
+      if (roundId !== null) {
+        const record = store.historyById(roundId);
+        const move = record?.walletMoves?.find(row => row.uid === u);
+        if (!move || !record) return send(res, 200, {roundId, status: 'none'});
+        if (record.walletStatus !== 'booked') return send(res, 200, {roundId, status: 'pending'});
+        return send(res, 200, {roundId, status: 'booked', delta: move.delta, balance: move.balance, streak: getStreak(u)});
+      }
       const r = getResult(u) ?? {};
       return send(res, 200, { ...r, streak: getStreak(u) });
     }
@@ -194,9 +202,13 @@ export async function createApp(opts: AppOptions): Promise<App> {
       try {
         const { getBalance } = await import('./settle');
         const r = await getBalance(uid);
-        send(res, 200, { balance: Number((r && (r as any).balance) ?? 0) });
-      } catch (e) {
-        send(res, 200, { balance: null, error: (e as Error).message });
+        const raw = r?.balance;
+        if ((typeof raw !== 'number' && !(typeof raw === 'string' && raw.trim())) || !Number.isFinite(Number(raw))) {
+          throw new Error('invalid balance');
+        }
+        send(res, 200, { balance: Number(raw) });
+      } catch {
+        send(res, 503, { balance: null, error: '余额暂时无法刷新' });
       }
       return;
     }

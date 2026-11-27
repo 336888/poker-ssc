@@ -1,3 +1,4 @@
+import { leaveAmount } from '../src/game/walletFees';
 // 房间管理：创建、查找、持久化、重启恢复、清理空闲房间
 
 import { generateInviteCode } from '../src/net/inviteCode';
@@ -7,7 +8,7 @@ import type { Store } from './db';
 import { log } from './log';
 import { bookRound, chargeFee, calcDeltas } from './settle';
 import { rtCfg } from './rtcfg';
-import { putResult, bumpStreak } from './results';
+import { clearResult, putResult, bumpStreak } from './results';
 
 /** 无人在线超过该时间的房间会被清理 */
 const IDLE_ROOM_MS = 30 * 60 * 1000;
@@ -128,6 +129,7 @@ export class RoomManager {
             }catch(e){log('钱包已入账，战绩更新失败',record.id,String(e))}
           }
         }catch(e){
+          for (const move of payable) clearResult(move.uid);
           record.walletStatus='pending';
           record.walletMoves=payable;
           record.walletReason=e instanceof Error?e.message:'钱包入账失败';
@@ -150,9 +152,7 @@ export class RoomManager {
       void (async () => {
         try {
           // 按实际倍数赔付：底注 × 倍数（地主翻倍），没有倍数额外叠加房间费
-          const base = 1;
-          const pot = base * (mult || 1);
-          const amount = role === 'landlord' ? pot * 2 : pot;
+          const amount = leaveAmount(mult, role);
           const r = await chargeFee(uid, amount);
           log('中途退出赔付', code, name, `倍数${mult} 角色${role || '-'} 扣${amount}元 余额${r.balance}`);
         } catch (e) {
