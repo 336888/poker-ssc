@@ -44,3 +44,4 @@ body:has(#tabs) table th{background:#edf3f9;color:#273d55}
 .admin .stat,body:has(#tabs) table {font-variant-numeric:tabular-nums}
 .tabbar .tb.on {color:#165d9c!important}
 :where(button,a,input,select,textarea):focus-visible {outline:3px solid #418cce;outline-offset:2px}
+.glow.g2 {max-width:100%;right:0!important}
