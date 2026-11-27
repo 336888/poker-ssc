@@ -122,8 +122,10 @@ export function cardTables(path, config, clock = Date.now) {
         r=get("SELECT state FROM card_duels WHERE phase IN ('wait','play') AND EXISTS(SELECT 1 FROM json_each(state,'$.users') WHERE value=?) LIMIT 1",uid);
         if(!r){
           admit?.();
+          const holds=db.prepare("SELECT 1 FROM sqlite_master WHERE name='poker_collateral' AND type='table'").get();
+          const held=holds ? db.prepare('SELECT coalesce(sum(loss+exit_fee),0) AS total FROM poker_collateral WHERE uid=?').get(uid).total : 0;
           const user=db.prepare('SELECT poker_balance,status FROM users WHERE uid=?').get(uid);
-          if(!user||user.status!==1||user.poker_balance<Math.max(1,config().minBal))throw new Error('账户不可入场或棋牌余额不足');
+          if(!user||user.status!==1||user.poker_balance-held<Math.max(1,config().minBal))throw new Error('账户不可入场或棋牌余额不足');
           r=get("SELECT state FROM card_duels WHERE game=? AND phase='wait' AND json_array_length(state,'$.users')=5 AND due>? ORDER BY due LIMIT 1",body.game,clock());
           if(!r)r={id:randomUUID(),users:Array(5).fill(null),game:body.game,phase:'wait',due:clock()+8000,rev:0,paid:Array(5).fill(0)};
           const seat=r.users.indexOf(null);
