@@ -91,7 +91,25 @@ body:has(#v-games.on) {
 #mainTabs .mt strong {color:#fff3db!important;background:linear-gradient(90deg,#08191dd9,#08191d66);border-radius:6px;padding:4px 8px}
 #mainTabs .mt[aria-pressed=true] {outline-color:#ffd180}
 #v-games .lobby {background:#faf7ee!important;color:#223e36;border-radius:16px 16px 0 0}
-#v-games #winTicker {background:#f7efdc!important;border-color:#e2d6bd!important}
+#v-games #winTicker {
+  box-sizing:border-box;height:auto!important;min-height:34px;margin:0 8px 8px;
+  padding:6px 10px;background:linear-gradient(100deg,#173e34f5,#10312bef)!important;
+  border:1px solid #a28b584d!important;border-radius:10px;gap:9px;
+}
+@media(min-width:768px) {#v-games #winTicker {margin-inline:12px}}
+#v-games #winTicker:has(#winTrack:empty) {display:none!important}
+#v-games #winTicker>span {
+  color:#e9d19e!important;font:600 12px/1.4 var(--fl-title);
+  padding-right:9px;border-right:1px solid #ba9e624f;
+}
+#v-games #winTicker>div {height:auto!important;min-width:0;white-space:normal!important}
+#v-games #winTrack {
+  position:static!important;display:block;color:#d6dfd6!important;
+  font-size:12px!important;line-height:1.45;overflow-wrap:anywhere;
+}
+#v-games #winTrack b {color:#f5eddb!important;font-weight:600}
+#v-games #winTrack b:last-child {color:#f1d199!important;white-space:nowrap;font-variant-numeric:tabular-nums}
+@media(prefers-reduced-motion:reduce) {#v-games #winTrack {transition:none!important}}
 body:has(#v-games.on) .tabbar {background:#f9f6ed!important;border-top:1px solid #c2b79d!important}
 body:has(#v-games.on) .tabbar .tb.on {color:#185346!important}
 @media(max-width:600px) {
