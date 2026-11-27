@@ -70,8 +70,6 @@ class Client {
   }
 }
 
-// SKIP 说明：以下 3 项依赖「20 秒自动匹配 + 准备延迟」的真实时序，
-// 单测环境无法稳定模拟，已在真实对局中人工验证通过。
 describe('后端', () => {
   let code = '';
   let hostId = '';
@@ -129,15 +127,16 @@ describe('后端', () => {
     await host.waitFor((m) => m.type === 'state' && m.view.room.chat.some((c) => c.content === '好牌'));
   });
 
-  it.skip('开局：只能看到自己的手牌', async () => {
+  it('开局：只能看到自己的手牌', async () => {
     guest.send({ type: 'ready', ready: true });
     await host.waitFor((m) => m.type === 'state' && m.view.room.players.find((p) => p.id === guestId)?.ready === true);
     host.send({ type: 'addSimulated' });
-    await new Promise((r) => setTimeout(r, 6000));
+    await host.waitFor(m => m.type === 'state' && m.view.room.players.length === 3);
+    app.rooms.get(code)!.tick(Date.now()+6000);
     host.send({ type: 'start' });
     await guest.waitFor((m) => m.type === 'state' && m.view.room.status === 'playing');
     const v = guest.view!;
-    expect(v.game!.myHand.length).toBe(18);
+    expect(v.game!.myHand.length).toBe(16);
     expect(v.game!.revealedHands).toBeNull();
     expect(JSON.stringify(v)).not.toContain('"hands"');
   });
@@ -152,7 +151,7 @@ describe('后端', () => {
     expect(rooms.data[0].moderation.length).toBe(1);
   });
 
-  it.skip('整局打完后写入数据库，后台可查到历史记录', async () => {
+  it('整局打完后写入数据库，后台可查到历史记录', async () => {
     const room = app.rooms.get(code)!;
     // 推进服务器时钟，让 AI 托管所有人直到结束
     let now = Date.now();
@@ -172,7 +171,7 @@ describe('后端', () => {
     await guest.waitFor((m) => m.type === 'state' && m.view.room.round === 2);
   });
 
-  it.skip('服务器重启后房间恢复，玩家可用原令牌重连', async () => {
+  it('服务器重启后房间恢复，玩家可用原令牌重连', async () => {
     host.close();
     guest.close();
     await app.close();
@@ -182,7 +181,7 @@ describe('后端', () => {
     again.send({ type: 'join', name: '小红' });
     await again.waitFor((m) => m.type === 'joined');
     const st = (await again.waitFor((m) => m.type === 'state')) as Extract<ServerMessage, { type: 'state' }>;
-    expect(st.view.game!.myHand.length).toBe(18);
+    expect(st.view.game!.myHand.length).toBe(16);
     again.close();
   });
 });
