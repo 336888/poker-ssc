@@ -82,6 +82,10 @@ function useMediaQuery(query: string) {
 
 export function GameTable({ view }: { view: ServerView }) {
   const { send, leaveRoom, notify } = useRoom();
+  const returnToHall = () => {
+    leaveRoom();
+    window.location.assign('/');
+  };
   const game = view.game!;
   const { room, you } = view;
   // 倒计时只需按秒刷新；能否出牌由 useReached 精确控制
@@ -323,7 +327,7 @@ export function GameTable({ view }: { view: ServerView }) {
     <div className="game">
       <header className="topbar topbar--game">
         <button className="btn btn--text" onClick={() => setConfirmLeave(true)}>
-          ← 退出
+          ‹ 返回大厅
         </button>
         <div className="game__status">
           <span className="chip chip--mode">{MODE_LABEL[game.mode]}</span>
@@ -571,7 +575,7 @@ export function GameTable({ view }: { view: ServerView }) {
         </div>
       )}
 
-      {game.phase === 'finished' && <ResultModal view={view} isHost={isHost} onLeave={leaveRoom} send={send} />}
+      {game.phase === 'finished' && <ResultModal view={view} isHost={isHost} onLeave={returnToHall} send={send} />}
 
       {showLog && (
         <Modal onClose={() => setShowLog(false)}>
@@ -605,8 +609,8 @@ export function GameTable({ view }: { view: ServerView }) {
             <button className="btn btn--ghost" onClick={() => setConfirmLeave(false)}>
               取消
             </button>
-            <button className="btn btn--danger" onClick={leaveRoom}>
-              {isHost ? '解散' : '离开'}
+            <button className="btn btn--danger" onClick={returnToHall}>
+              {isHost ? '确认退出并返回大厅' : '离开并返回大厅'}
             </button>
           </div>
         </Modal>
@@ -757,6 +761,7 @@ function ResultModal({ view, isHost, onLeave, send }: { view: ServerView; isHost
           </button>
           {isHost ? (
             <>
+              <button className="btn btn--ghost" onClick={onLeave}>返回大厅</button>
               <button className="btn btn--ghost" onClick={() => send({ type: 'backToLobby' })}>
                 返回房间
               </button>
@@ -776,7 +781,7 @@ function ResultModal({ view, isHost, onLeave, send }: { view: ServerView; isHost
                 } catch { /* 忽略 */ }
                 onLeave();
               }}>
-                离开
+                返回大厅
               </button>
               <span className="muted small">等待房主开始下一局…</span>
             </>

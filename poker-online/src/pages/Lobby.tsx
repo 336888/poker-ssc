@@ -49,6 +49,7 @@ export function Lobby({ view }: { view: ServerView }) {
       });
     } catch { /* ignore */ }
     leaveRoom();
+    window.location.assign('/');
   };
 
   const canStart = humans.length >= cfg.seatCount && notReady.length === 0;
@@ -99,7 +100,7 @@ export function Lobby({ view }: { view: ServerView }) {
       </button>
 
       <div className="mini-foot">
-        <button className="mini-back" onClick={doLeave}>退出</button>
+        <button className="mini-back" onClick={doLeave}>‹ 返回大厅</button>
         <ChatButton policy={cfg.chat} chat={room.chat} you={you} compact />
       </div>
     </div>

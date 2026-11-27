@@ -71,7 +71,7 @@ export function Home() {
         </div>
       </div>
 
-      {/* 唯一按钮 */}
+      <a className="mini-back" href="/">‹ 返回大厅</a>
       <button className="mini-start" disabled={busy||checking} onClick={onStart}>
         {checking?'验证登录中…':busy?'进入中…':loginError?'重试登录并进入':'开始游戏'}
       </button>
