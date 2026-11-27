@@ -46,23 +46,34 @@ def publish(core, rows, schedule, now):
                 raise ValueError("同期开奖冲突")
             c.execute("INSERT OR IGNORE INTO df_draws(game_no,issue,numbers,draw_time,ctime) VALUES(?,?,?,?,?)",
                       (NO, issue, balls, opened, int(now.timestamp())))
-        next_time = stamp(schedule["NextTime"])
-        issue = str(schedule["NextQishu"])
-        if issue != issue_for(next_time) or issue_for(next_time - timedelta(days=1)) != latest[0]:
-            raise ValueError("下一期与归档不连续")
-        close = next_time.replace(hour=21, minute=26, second=0)
-        if next_time <= close:
-            raise ValueError("计划开奖早于封盘")
-        c.execute("INSERT OR REPLACE INTO df_current VALUES(?,?,?,?,?,?,?)",
-                  (NO, issue, latest[0], latest[1], schedule["NextTime"], int(now < close), int(now.timestamp())))
         c.execute("""CREATE TRIGGER IF NOT EXISTS xam_cutoff BEFORE INSERT ON df_orders
           WHEN NEW.game_no='99001' AND NOT EXISTS (
             SELECT 1 FROM df_current WHERE game_no=NEW.game_no AND issue=NEW.issue AND can_bet=1
             AND utime >= unixepoch()-240 AND unixepoch() < unixepoch(substr(draw_time,1,10)||' 21:26:00+08:00')
             AND NOT EXISTS (SELECT 1 FROM df_draws WHERE game_no=NEW.game_no AND issue=NEW.issue))
           BEGIN SELECT RAISE(ABORT,'新澳门六合彩已封盘'); END""")
-    for row in core.db.q("SELECT DISTINCT issue FROM df_orders WHERE game_no=? AND status=0", (NO,)):
+    # A valid completed draw remains settleable when next-issue publication lags.
+    pending = core.db.q("""SELECT DISTINCT o.issue FROM df_orders o JOIN df_draws d
+        ON d.game_no=o.game_no AND d.issue=o.issue WHERE o.game_no=? AND o.status=0""", (NO,))
+    for row in pending:
         core.df_settle(NO, row["issue"])
+    with core.db.tx() as c:
+        try:
+            next_time = stamp(schedule["NextTime"])
+            issue = str(schedule["NextQishu"])
+        except (TypeError, ValueError, KeyError):
+            c.execute("UPDATE df_current SET can_bet=0 WHERE game_no=?", (NO,))
+            return
+        if issue != issue_for(next_time) or issue_for(next_time - timedelta(days=1)) != latest[0]:
+            c.execute("UPDATE df_current SET can_bet=0 WHERE game_no=?", (NO,))
+            return
+        close = next_time.replace(hour=21, minute=26, second=0)
+        if next_time <= close:
+            c.execute("UPDATE df_current SET can_bet=0 WHERE game_no=?", (NO,))
+            return
+        c.execute("INSERT OR REPLACE INTO df_current VALUES(?,?,?,?,?,?,?)",
+                  (NO, issue, latest[0], latest[1], schedule["NextTime"], int(now < close), int(now.timestamp())))
+
 
 
 def install(core):
@@ -111,8 +122,12 @@ def start(core):
             try:
                 if time.time() - ARCHIVE.stat().st_mtime > 900:
                     raise ValueError("开奖归档未及时更新")
-                with urlopen(NEXT, timeout=12) as response:
-                    schedule = json.loads(response.read(16384).decode("utf-8-sig"))
+                schedule = None
+                try:
+                    with urlopen(NEXT, timeout=12) as response:
+                        schedule = json.loads(response.read(16384).decode("utf-8-sig"))
+                except (ValueError, OSError) as exc:
+                    print("下一期期号暂不可用", type(exc).__name__, flush=True)
                 publish(core, json.loads(ARCHIVE.read_text()), schedule, datetime.now(ZONE))
             except Exception as exc:
                 print("新澳门六合彩同步失败", type(exc).__name__, str(exc), flush=True)

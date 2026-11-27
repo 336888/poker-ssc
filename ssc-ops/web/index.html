@@ -3388,6 +3388,11 @@ function dfDeadline(cur){
   return Date.parse(/(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw) ? raw : raw + '+08:00') / 1000;
 }
 
+function dfAccepting(){
+  const cur=DF.cur;
+  return !DF.syncError && cur?.issue && ![false,0,'0'].includes(cur.can_bet)
+    && dfDeadline(cur)>Date.now()/1000;
+}
 async function loadDfDraws(no){
   if(DF.busy || !no || !DF.plays || S.view !== 'dfp') return;
   const session = DF.session;
@@ -3500,7 +3505,7 @@ function startDfCd(){
     if(!document.hidden && Date.now() >= DF.nextSync) loadDfDraws(DF.no);
     const deadline = dfDeadline(DF.cur);
     const remaining = Math.ceil(deadline - Date.now()/1000);
-    const closed = !Number.isFinite(remaining) || remaining <= 0 || DF.syncError;
+    const closed = !dfAccepting();
     if(!DF.busy && remaining === 0) DF.nextSync = 0;
     const leftToClose = Math.max(0, remaining);
     el.textContent = DF.syncError || !Number.isFinite(remaining) ? '--:--' : closed ? '已封盘'
@@ -3638,7 +3643,7 @@ function refreshDfBetBar(){
   const n = dfCountNow();
   if(S.view!=='dfp' || !DF.plays){ bar.classList.add('hide'); return; }
   bar.classList.remove('hide');
-  $('dfBetBtn').disabled=!n || DF.syncError || !(dfDeadline(DF.cur)>Date.now()/1000);
+  $('dfBetBtn').disabled=!n || !dfAccepting();
   $('dbbCount').textContent = n;
   const amb = $('dfBetAmt');
   if(amb) amb.textContent = '￥' + (n * (DFB.chip || 1)).toLocaleString();
@@ -3660,7 +3665,7 @@ async function dfSubmit(){
   const gameNo = DF.no, issue = DF.cur?.issue, chip = DFB.chip;
   const session = DF.session;
   if(!issue || DF.syncError || !Number.isFinite(dfDeadline(DF.cur))) return toast('正在同步期号');
-  if(Date.now()/1000 >= dfDeadline(DF.cur)) return toast('已封盘，请等下一期');
+  if(!dfAccepting()) return toast('已封盘，请等下一期');
   const n = dfCountNow();
   if(!n) return toast('请先选号');
   const amt = n * DFB.chip;
@@ -3670,7 +3675,7 @@ async function dfSubmit(){
       // 六合彩：逐项提交
       const batch=[...DFB.lhc],confirmed=[],unconfirmed=[];
       for(const it of batch){
-        if(session!==DF.session || issue!==DF.cur?.issue || Date.now()/1000>=dfDeadline(DF.cur))break;
+        if(session!==DF.session || issue!==DF.cur?.issue || !dfAccepting())break;
         try{
           const r=await api('/api/df/bet',{game_no:gameNo,issue,rule_key:it.key,pick:[it.name],amount:chip});
           confirmed.push({it,id:r.id});

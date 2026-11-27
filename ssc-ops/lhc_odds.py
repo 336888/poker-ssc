@@ -44,6 +44,7 @@ def install(core):
         result = original_list(no)
         if result.get("kind") == "lhc":
             values = settings()
+            factor = original_num("df_lhc_factor", 1)
             priority = [*GROUPS[:8], "特码头尾数"]
             result["groups"] = sorted(
                 (g for g in result["groups"] if g["name"] != "GamesPlay_B"),
@@ -53,6 +54,8 @@ def install(core):
                     k = market(group["name"], item["name"])
                     if k in values:
                         item["odds"] = values[k]
+                    elif item["odds"]:
+                        item["odds"] = round(float(item["odds"]) * factor, 4)
         return result
 
     def metadata(no, rule_key):
