@@ -2027,11 +2027,16 @@ function drawFace(n, dice, kind){
     }
     return dfBall(esc(value), kind);
   }
+const lotteryCardFamilies = new Map([
+  ['时时彩','ssc'], ['快三','dice'], ['PK10','race'], ['PC蛋蛋','pc28'],
+  ['福彩3D','fc3d'], ['快乐十分','happy10'], ['六合彩','six']
+]);
 function lotteryCard(x, cat){
   const numbers=String(x.last?.nums || '').trim().split(/[,，\s]+/).filter(Boolean);
   const dice=cat==='快三' || /快三|快3/.test(x.name);
+  const family = lotteryCardFamilies.get(cat) || (dice ? 'dice' : /时时彩/.test(x.name) ? 'ssc' : 'draw');
   const issue=x.last?.issue;
-  return `<button type="button" class="lot-ticket" data-family="${(cat==='时时彩'||/时时彩/.test(x.name))?'ssc':dice?'dice':cat==='PK10'?'race':cat==='PC蛋蛋'?'pc28':cat==='六合彩'?'six':'draw'}" data-no="${esc(String(x.no))}" onclick="openDfPlay(this.dataset.no)">
+  return `<button type="button" class="lot-ticket" data-family="${family}" data-no="${esc(String(x.no))}" onclick="openDfPlay(this.dataset.no)">
     <span class="ticket-title"><strong>${esc(x.name)}</strong><span>下注 ›</span></span>
     <span class="ticket-result"><small>${issue?esc(String(issue))+'期':'上期开奖'}</small>
     <span class="ticket-values">${numbers.length?numbers.map(n=>drawFace(n,dice,cat==='六合彩'?'lhc':'num')).join(''):'等待开奖'}</span></span></button>`;
