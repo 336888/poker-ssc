@@ -71,6 +71,8 @@ export class RoomServer {
   /** 状态变更回调（持久化、更新房间列表） */
   onChange: ((server: RoomServer) => void) | null = null;
   /** 每局结束回调（写入后台历史记录） */
+  beforeDeal?: (id: string) => void;
+  beforeJoin?: (uid: string) => void;
   onRoundFinished: ((record: GameRecord) => void) | null = null;
   /** 游戏中主动离开时触发（用于扣房间费） */
   onPlayerLeaveMidGame: ((uid: string, name: string, mult: number, role?: string) => void) | null = null;
@@ -426,6 +428,7 @@ export class RoomServer {
     }
     if (this.room.status !== 'waiting') throw new GameError('游戏进行中，暂时无法加入');
     if (this.humans().length >= this.capacity()) throw new GameError('房间已满');
+    this.beforeJoin?.(playerId);
     const clean = name.trim().slice(0, 12) || '玩家';
     if (containsBlocked(clean)) throw new GameError('昵称包含不文明内容，请修改后再加入');
     this.room.players.push({
@@ -620,21 +623,24 @@ export class RoomServer {
       });
     }
 
+    this.deal(true);
     this.room.round += 1;
-    this.deal();
     this.room.status = 'playing';
     this.changed();
   }
 
-  private deal(): void {
-    this.game = dealNewGame({
+  private deal(newRound = false): void {
+    const game = dealNewGame({
       mode: this.room.config.mode,
       seats: this.room.players.map((p) => ({ id: p.id, name: p.name, isAI: p.kind === 'ai' })),
       deckCount: this.room.config.deckCount,
       withJokers: this.room.config.withJokers,
-      round: this.room.round,
+      round: this.room.round + Number(newRound),
       previousWinnerId: this.room.lastWinnerId,
     });
+    if (newRound) this.beforeDeal?.([this.room.code, game.round, game.startedAt].join('-'));
+    else if (this.game) game.startedAt = this.game.startedAt;
+    this.game = game;
     // 等待客户端播放完洗牌、发牌动画后才开始计时
     this.game.turnStartedAt = Date.now() + DEAL_ANIMATION_MS;
     this.pendingAutoAt = null;
