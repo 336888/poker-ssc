@@ -10,6 +10,7 @@ import { normalizeCode } from '../src/net/inviteCode';
 import type { ServerMessage } from '../src/net/protocol';
 import { randomId } from '../src/net/roomServer';
 import { AdminAuth, AuthError, hashAdminPassword, PlayerTokens, RateLimiter } from './auth';
+import { checkSeats } from './collateral';
 import { Store } from './db';
 import { log } from './log';
 import { cardTables } from './cardTables.js';
@@ -267,6 +268,7 @@ export async function createApp(opts: AppOptions): Promise<App> {
       if (!name) throw new HttpError(400, '请输入昵称');
       const wantUid0 = walletIdentity(req,body.uid);
       if (!wantUid0 && containsBlocked(name)) throw new HttpError(400, '昵称包含不文明内容，请修改');
+      if (!wantUid0 && process.env.NODE_ENV === 'production') throw new HttpError(401,'请从主站棋牌大厅登录');
       const wantUid = wantUid0;
       let code: string;
       let hostId: string;
@@ -274,6 +276,7 @@ export async function createApp(opts: AppOptions): Promise<App> {
         ({ code, hostId } = rooms.create(wantUid ? wantUid : name, sanitizeConfig(body.config), wantUid, ip, typeof body.fp === 'string' ? body.fp.slice(0, 24) : ''));
       } catch (e) {
         const msg = (e as Error).message;
+        if (msg.includes('棋牌')) throw new HttpError(403,msg);
         if (msg.includes('同一设备') || msg.includes('房间已满')) throw new HttpError(400, msg);
         throw e;
       }
@@ -293,6 +296,11 @@ export async function createApp(opts: AppOptions): Promise<App> {
       const wantUidJ = walletIdentity(req,body.uid);
       if (!wantUidJ && containsBlocked(name)) throw new HttpError(400, '昵称包含不文明内容，请修改');
       if (room.room.status !== 'waiting') throw new HttpError(409, '游戏进行中，暂时无法加入');
+      if (!wantUidJ && process.env.NODE_ENV === 'production') throw new HttpError(401,'请从主站棋牌大厅登录');
+      if (wantUidJ) {
+        try { checkSeats([wantUidJ],room.room.config,rtCfg().minBal); }
+        catch (error) { throw new HttpError(403,(error as Error).message); }
+      }
       const playerId = wantUidJ || randomId('p');
       if(wantUidJ) store.setMeta('wallet:'+code+':'+room.room.createdAt+':'+playerId,'1');
       return send(res, 200, { playerId, token: tokens.sign('room-v2:'+code, playerId) });
