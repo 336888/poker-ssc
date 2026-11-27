@@ -1,0 +1,10 @@
+[Unit]
+Description=Recheck pending poker leave fees every minute
+
+[Timer]
+OnBootSec=30s
+OnUnitInactiveSec=60s
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target
