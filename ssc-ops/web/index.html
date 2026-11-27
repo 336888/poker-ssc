@@ -3357,7 +3357,7 @@ async function openDfPlay(no){
   const session = ++DF.session;
   go('dfp');
   clearInterval(DF.timer);
-  Object.assign(DF, {no:null, plays:null, cur:null, draws:null, busy:false, syncError:false, nextSync:0});
+  Object.assign(DF, {no:null, plays:null, cur:null, draws:null, lastDiceIssue:null, busy:false, syncError:false, nextSync:0});
   Object.assign(DFB, {play:null, picks:{}, lhc:[], rule:null, sel:null});
   $('myLastBar').style.display='none';
   $('dfBetBar').classList.add('hide');
@@ -3439,6 +3439,15 @@ async function loadDfDraws(no){
       const panel = document.querySelector('#dfDrawHead .draw-summary');
       if(panel) panel.outerHTML = dfSummary();
     }
+    if(next?.last_issue && isK3Draw()){
+      const issue=String(next.last_issue);
+      const values=String(next.last_numbers ?? '').trim().split(/[,，\s]+/);
+      if(values.length===3 && values.every(n=>/^0?[1-6]$/.test(n))){
+        const prior=DF.lastDiceIssue;
+        DF.lastDiceIssue=issue;
+        if(prior && prior!==issue && S.view==='dfp' && !document.hidden) rollK3Dice(values);
+      }
+    }
   }finally{
     if(session === DF.session){
       DF.busy = false;
@@ -3459,13 +3468,40 @@ function dfBall(n, kind){
   return `<span class="dball">${n}</span>`;
 }
 
+function isK3Draw(){
+  return /快三|快3/i.test(DF.plays?.name || '') ||
+    (DF.lots?.['快三'] || []).some(x=>String(x.no)===String(DF.no));
+}
+
+function rollK3Dice(values){
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  const row=document.querySelector('#dfDrawHead .draw-row .draw-values');
+  if(!row || row.children.length!==3)return;
+  // Each cube starts on the table and lands with the published face forward.
+  [...row.children].forEach((die,i)=>{
+    const front=Number(values[i]);
+    if(Number(die.dataset.face)!==front)return;
+    const sides=[1,2,3].filter(n=>n!==Math.min(front,7-front));
+    const cube=document.createElement('span');
+    cube.className='k3-cube';cube.setAttribute('aria-hidden','true');
+    cube.style.setProperty('--roll-time',(760+i*110)+'ms');
+    cube.innerHTML=[front,7-front,sides[0],7-sides[0],sides[1],7-sides[1]]
+      .map(n=>drawFace(String(n),true,'num')).join('');
+    die.classList.add('k3-rolling');
+    die.append(cube);
+    const stop=()=>{die.classList.remove('k3-rolling');cube.remove()};
+    cube.addEventListener('animationend',stop,{once:true});
+    cube.addEventListener('animationcancel',stop,{once:true});
+  });
+}
+
 function dfSummary(){
   const cur = DF.cur || {}, draws = DF.draws || [];
   const d = DF.plays || {groups: []};
   const kind = d.kind === 'lhc' ? 'lhc' : 'num';
-  const last = cur.last_numbers ? String(cur.last_numbers).split(',') : [];
+  const last = String(cur.last_numbers ?? '').trim().split(/[,，\s]+/).filter(Boolean);
 
-  const dice = /快三|快3/i.test(d.name || '') || (DF.lots?.['快三'] || []).some(x => String(x.no) === String(DF.no));
+  const dice = isK3Draw();
   const face = n => drawFace(n, dice, kind);
   const wasOpen = $('drawHistory')?.dataset.lot === String(DF.no) && $('drawHistory').open;
   const row = `<span class="draw-period">上期<br><b>${esc(String(cur.last_issue || '—'))}</b></span>
