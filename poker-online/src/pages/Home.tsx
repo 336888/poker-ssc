@@ -1,3 +1,4 @@
+import { GameEntry } from '../components/GameEntry';
 import { useEffect, useState } from 'react';
 import { lobbyApi } from '../net/api';
 import { profileStore } from '../net/storage';
@@ -49,31 +50,10 @@ export function Home() {
     }
   };
 
-  if (link === 'connecting') {
-    return (
-      <div className="mini">
-        <div className="mini-loading">
-          <div className="mini-spin" />
-          <p>正在进入牌局…</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="mini">
-      {/* 品牌 */}
-      <div className="mini-brand">
-        <div className="mini-mark">FL</div>
-        <div className="mini-name">飞龙娱乐</div>
-        <div className="mini-sub">
-          {gameName ? gameName + ' · 3 人成局' : '跑得快 · 斗地主'}
-        </div>
-      </div>
-
-      <a className="mini-back" href="/">‹ 返回大厅</a>
-      <button className="mini-start" disabled={busy||checking} onClick={onStart}>
-        {checking?'验证登录中…':busy?'进入中…':loginError?'重试登录并进入':'开始游戏'}
+    <GameEntry title={gameName || '在线牌局'} detail={gameName ? '3 人成局' : '跑得快 · 斗地主'}>
+      <button className="mini-start" disabled={busy||checking||link==='connecting'} onClick={onStart}>
+        {link==='connecting'?'正在进入牌局…':checking?'验证登录中…':busy?'进入中…':loginError?'重试登录并进入':'开始游戏'}
       </button>
 
       {!initialGame && (
@@ -83,10 +63,10 @@ export function Home() {
         </nav>
       )}
 
-      {loginError && <p role="alert" className="mini-tip">{loginError} · <a href="/">返回主站</a></p>}
+      {loginError && <p role="alert" className="mini-tip">{loginError}</p>}
       {lobbyApi.mode === 'mock' && (
         <p className="mini-tip">本地演示模式</p>
       )}
-    </div>
+    </GameEntry>
   );
 }

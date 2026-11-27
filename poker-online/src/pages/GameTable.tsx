@@ -1,3 +1,4 @@
+import { HallReturn } from '../components/GameEntry';
 import { CSSProperties, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { ChatBubble, ChatButton, useChatBubbles, useChatSound } from '../components/Chat';
 import { Modal } from '../components/common';
@@ -326,9 +327,7 @@ export function GameTable({ view }: { view: ServerView }) {
   return (
     <div className="game">
       <header className="topbar topbar--game">
-        <button className="btn btn--text" onClick={() => setConfirmLeave(true)}>
-          ‹ 返回大厅
-        </button>
+        <HallReturn onReturn={()=>game.phase==='finished'?returnToHall():setConfirmLeave(true)}/>
         <div className="game__status">
           <span className="chip chip--mode">{MODE_LABEL[game.mode]}</span>
           <span className="chip">第 {game.round} 局</span>
@@ -610,7 +609,7 @@ export function GameTable({ view }: { view: ServerView }) {
               取消
             </button>
             <button className="btn btn--danger" onClick={returnToHall}>
-              {isHost ? '确认退出并返回大厅' : '离开并返回大厅'}
+              确认返回大厅
             </button>
           </div>
         </Modal>

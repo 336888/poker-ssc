@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Avatar, Modal } from '../src/components/common';
 import { PlayingCard } from '../src/components/PlayingCard';
+import { GameEntry, HallReturn } from '../src/components/GameEntry';
 import { Seat } from '../src/components/Seat';
 import { rank, suit, three } from '../public/card-table/rules.js';
 import '../src/styles/app.css';
@@ -21,6 +22,7 @@ const seatName = i => (i+1)+'号位';
 
 function Screen(){
   const [picked,setPicked]=useState([]);
+  const [leaving,setLeaving]=useState(false);
   const [rules,setRules]=useState(false);
   const s=room, game=s?.game || requested, title=nameOf(game), count=game==='nn'?5:3;
   document.title=title+' · 飞龙娱乐';
@@ -29,19 +31,27 @@ function Screen(){
     <p>每席底注 1，五人成局。等待 8 秒后空席自动补位，并列赢家平分底池，余分按座号分配。</p>
     <p>{game==='nn'?'选三张凑整十，再以剩余两张计牛点。同牛比最大牌，再比花色。超时自动组牛。':'看牌后跟注加倍，比牌同牌时发起者出局。最多 40 次付费行动后摊牌，45 秒未操作自动弃牌。'}</p>
     <button className="btn btn--primary" onClick={()=>setRules(false)}>知道了</button></Modal>;
-  if(!s || s.phase==='wait')return <div className="mini">
-    <div className="mini-brand"><div className="mini-mark">FL</div><div className="mini-name">飞龙娱乐</div><div className="mini-sub">{title} · 5 人成局</div></div>
+  const returnToHall=async()=>{
+    if(busy)return;
+    if(s?.phase==='wait'){
+      if(pollController)pollController.abort();
+      await request('cancel');
+      if(room)return;
+    }
+    window.location.assign('/');
+  };
+  if(!s || s.phase==='wait')return <GameEntry title={title} detail="5 人成局 · 每席底注 1" onReturn={returnToHall}>
     {s && <div className="mini-seats">{s.seats.map((v,i)=><div key={i} className={'mini-seat'+(v.kind==='空位'?' mini-seat--empty':'')}>
       <div className="mini-seat__no">{i+1}</div>{v.kind==='空位'?<div className="mini-ava-empty">+</div>:<Avatar name={seatName(i)} kind="human" size={34}/>}
       <div className="mini-seat__name">{v.kind==='空位'?'匹配中…':seatName(i)} {i===s.me?'（你）':''}</div></div>)}</div>}
-    <p className="mini-tip" role="status">{message || (s?'正在匹配，约 '+Math.max(0,Math.ceil((s.due-Date.now())/1000))+' 秒后补齐空席':'每席底注 1')}</p>
-    <button className="mini-start" disabled={!authenticated || busy} onClick={()=>action(s?'cancel':'join')}>{s?'取消匹配并退回底注':'投入 1 并匹配'}</button>
-    <div className="mini-foot"><a href="/">返回大厅</a> · <button className="btn btn--text" onClick={()=>setRules(true)}>规则</button></div>{rulesPanel}</div>;
+    {(message||s)&&<p className="mini-tip" role="status">{message || (s?'正在匹配，约 '+Math.max(0,Math.ceil((s.due-Date.now())/1000))+' 秒后补齐空席':'')}</p>}
+    <button className="mini-start" disabled={!authenticated || busy} onClick={()=>action(s?'cancel':'join')}>{s?'取消匹配并退回底注':'开始游戏 · 投入 1 并匹配'}</button>
+    <div className="mini-foot"><button className="btn btn--text" onClick={()=>setRules(true)}>规则</button></div>{rulesPanel}</GameEntry>;
   const done=s.phase==='done';
   const btn=(label,type,target,disabled=false)=><button key={type+String(target??'')} className={'btn '+(type==='fold'?'btn--ghost':'btn--primary')} disabled={busy||disabled} onClick={()=>action(type,target)}>{label}</button>;
   const positions=[[17,68],[28,22],[72,22],[83,68]];
   const cost=s.base*(s.seen?2:1);
-  return <div className="game five-table"><header className="topbar topbar--game"><a className="btn btn--text" href="/">‹ 大厅</a><div className="game__status"><span className="chip chip--mode">{title}</span><span className="chip">五人桌</span></div><button className="btn btn--text" onClick={()=>setRules(true)}>规则</button></header>
+  return <div className="game five-table"><header className="topbar topbar--game"><HallReturn onReturn={()=>done?returnToHall():setLeaving(true)}/><div className="game__status"><span className="chip chip--mode">{title}</span><span className="chip">五人桌</span></div><button className="btn btn--text" onClick={()=>setRules(true)}>规则</button></header>
     <main className="table"><div className="table__spot"/>{positions.map(([x,y],i)=>{
       const j=(s.me+i+1)%5,v=s.seats[j];return <Seat key={j} player={{name:seatName(j),kind:'human',online:true}} isTurn={v.acting} cards={v.active?count:0} rank={null} compact role={null} remaining={null} actionLabel={game==='nn'?'组牛中':'行动中'} seatLabel={!v.active?'已弃牌':v.ready?'已组牛':'已入座'} hideCount={!v.active} style={{left:x+'%',top:y+'%'}}/>})}
       <div className="five-pot">底池 {s.pot}</div></main>
@@ -52,7 +62,7 @@ function Screen(){
         <PlayingCard card={n==null?undefined:describe(n)} size="lg" selected={selected}/></button>})}</div></section>
     {done && <Modal><div className={'result '+(s.delta>0?'result--win':'')}><h2 className="result__title">本局结算</h2><p>{title} · {game==='nn'?'牛点 '+(s.level??0):s.hand.length?['单张','对子','顺子','同花','同花顺','豹子'][three(s.hand)[0]]:''} · 我的净额 {s.delta}</p>
       <ol className="podium">{s.seats.map((v,i)=><li className="podium__row" key={i}><strong>{seatName(i)}{i===s.me?'（你）':''}</strong><span>{v.hand.map(n=>'23456789TJQKA'[rank(n)-2]+'♦♣♥♠'[suit(n)]).join(' ')}</span><b>{v.delta}</b></li>)}</ol>
-      {message&&<p role="alert">{message}</p>}<a className="btn btn--ghost" href="/">大厅</a> {btn('再匹配一局','join')}</div></Modal>}{rulesPanel}</div>;
+      {message&&<p role="alert">{message}</p>}<a className="btn btn--ghost" href="/">返回大厅</a> {btn('再匹配一局','join')}</div></Modal>}{rulesPanel}{leaving&&<Modal onClose={()=>setLeaving(false)}><h2>返回大厅？</h2><p>本局继续进行，超时将按本桌规则处理。</p><div className="row-end"><button className="btn btn--ghost" onClick={()=>setLeaving(false)}>取消</button><button className="btn btn--danger" onClick={returnToHall}>确认返回大厅</button></div></Modal>}</div>;
 }
 function paint(){root.render(<Screen key={room?.id || requested}/>);}
 async function request(action,target,trio=[]){

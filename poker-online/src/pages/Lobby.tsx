@@ -1,3 +1,4 @@
+import { GameEntry } from '../components/GameEntry';
 import { useEffect, useState } from 'react';
 import { ChatBubble, ChatButton, useChatBubbles, useChatSound } from '../components/Chat';
 import { Avatar } from '../components/common';
@@ -59,13 +60,7 @@ export function Lobby({ view }: { view: ServerView }) {
     : '开始游戏';
 
   return (
-    <div className="mini">
-      <div className="mini-brand">
-        <div className="mini-mark">FL</div>
-        <div className="mini-name">飞龙娱乐</div>
-        <div className="mini-sub">{(ddz ? '斗地主' : '跑得快')} · {cfg.seatCount} 人成局</div>
-      </div>
-
+    <GameEntry title={ddz ? '斗地主' : '跑得快'} detail={cfg.seatCount+' 人成局'} onReturn={doLeave}>
       <div className="mini-seats">
         {room.players.map((p, i) => (
           <div key={p.id} className={'mini-seat' + (p.id === you ? ' is-me' : '')}>
@@ -100,9 +95,8 @@ export function Lobby({ view }: { view: ServerView }) {
       </button>
 
       <div className="mini-foot">
-        <button className="mini-back" onClick={doLeave}>‹ 返回大厅</button>
         <ChatButton policy={cfg.chat} chat={room.chat} you={you} compact />
       </div>
-    </div>
+    </GameEntry>
   );
 }
