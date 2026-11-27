@@ -234,17 +234,31 @@ body:has(#tabs) .kpi {border-inline-start:3px solid var(--fl-gold)!important}
 .game .five-pot {color:#fff0c9;text-shadow:0 1px 3px #152e26}
 body:has(#tabs) .box {overflow-x:auto}
 
-/* Lay one continuous brocade beneath the whole lottery catalogue. */
-#v-games .lobby:has(#hall .lot-ticket) {
+/* Lay one continuous brocade beneath the whole hall catalogue. */
+#v-games .lobby {
   background:#10392e url('./jade-brocade.webp') center top/420px auto repeat!important;
   box-shadow:inset 0 1px #c4a36a75;
 }
-#v-games #hall:has(.lot-ticket),#v-games #hall .cards-all:has(.lot-ticket),
-#v-games #hall .cards-all:has(.lot-ticket) .sec {background:transparent!important}
-#v-games #hall .cards-all:has(.lot-ticket) .sec>span {
+#v-games #hall,#v-games #hall .cards-all,
+#v-games #hall .cards-all .sec {background:transparent!important}
+#v-games #hall .cards-all .sec>span {
   color:#ffedc5!important;-webkit-text-fill-color:currentColor;background:none!important;
   font-family:var(--fl-title);text-shadow:0 1px 3px #103125;
 }
-#v-games #hall .cards-all:has(.lot-ticket) .sec small {color:#dbcba6!important}
-#v-games #hall .cards-all:has(.lot-ticket) .sec::before {background:#ceaa65!important}
-#v-games #hall .cards-all:has(.lot-ticket) .sec::after {background:linear-gradient(90deg,#d0b47b80,transparent)!important}
+#v-games #hall .cards-all .sec small {color:#dbcba6!important}
+#v-games #hall .cards-all .sec::before {background:#ceaa65!important}
+#v-games #hall .cards-all .sec::after {background:linear-gradient(90deg,#d0b47b80,transparent)!important}
+
+/* Reserve the fixed navigation once at the end of the hall catalogue. */
+body:has(#v-games.on) {
+  --catalogue-nav-height:calc(55px + env(safe-area-inset-bottom,0px));
+  padding-bottom:0!important;margin-bottom:0!important;
+}
+@media(min-width:768px) {
+  body:has(#v-games.on) {--catalogue-nav-height:calc(62px + env(safe-area-inset-bottom,0px))}
+}
+#v-games.on {padding-bottom:0!important}
+#v-games.on #hall {padding-bottom:calc(var(--catalogue-nav-height) + 8px)!important}
+body:has(#v-games.on) .tabbar {box-sizing:border-box;height:var(--catalogue-nav-height)!important}
+/* Continue the material to the navigation when a hall has only one row. */
+body:has(#v-games.on) {background:#10392e url('./jade-brocade.webp') center top/420px auto repeat!important}
