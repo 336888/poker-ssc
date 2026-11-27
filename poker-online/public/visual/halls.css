@@ -344,3 +344,54 @@ body:has(#v-games.on) {background:#10392e url('./jade-brocade.webp') center top/
   100% {transform:translateY(0) rotateX(0) rotateY(0)}
 }
 @media(prefers-reduced-motion:reduce){.k3-cube{animation-duration:1ms}}
+
+/* Player plates on the three- and five-seat tables. */
+.seat:has(> .seat__top) {
+  background: linear-gradient(145deg, #fffdf5, #f3ecd9);
+  color: #253c32;
+  border-color: #b9aa83;
+  box-shadow: 0 3px 10px #081b2440, inset 0 1px #fff;
+}
+.seat.is-turn:has(> .seat__top) {
+  border-color: #318765;
+  box-shadow: 0 0 0 3px #83d4a662, 0 3px 10px #081b2440;
+}
+.seat.is-winner:has(> .seat__top) {
+  border-color: #bf871f;
+  box-shadow: 0 0 0 3px #f1c76773, 0 3px 10px #081b2440;
+}
+.seat__top .seat__avatar { flex: none; }
+.seat__avatar::after, .me__bar .me__who::before {
+  content: "";
+  background: #153f38 url('./dragon-mark.webp') center / cover no-repeat;
+  border: 1px solid #d5b36d;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px #13281e48;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+.seat__avatar::after {
+  position: absolute;
+  bottom: -2px;
+  left: -2px;
+  width: 17px;
+  height: 17px;
+}
+.seat__top .seat__name { color: #203d31; font-weight: 750; }
+.seat__top .seat__bal {
+  color: #28573d;
+  background: #e1eddf;
+  border-radius: 4px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.seat > .seat__cards { background: #e9e3d2; }
+.me__bar .me__who::before {
+  flex: 0 0 20px;
+  height: 20px;
+  align-self: center;
+}
+@media (max-width: 480px) {
+  .seat__avatar::after { width: 14px; height: 14px; }
+  .me__bar .me__who::before { flex-basis: 16px; height: 16px; }
+}
