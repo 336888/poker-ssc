@@ -19,6 +19,8 @@ export class Store {
     this.db = new DatabaseSync(file);
     this.db.exec(`
       PRAGMA journal_mode = WAL;
+      PRAGMA secure_delete = ON;
+      CREATE TABLE IF NOT EXISTS redeemed_sso (signature TEXT PRIMARY KEY, expires INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS rooms (code TEXT PRIMARY KEY, snapshot TEXT NOT NULL, updated_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS history (
@@ -49,6 +51,15 @@ export class Store {
 
   setMeta(key: string, value: string) {
     this.db.prepare('INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(key, value);
+  }
+
+  consumeSso(signature:string, expires:number, now:number): boolean {
+    this.db.prepare('DELETE FROM redeemed_sso WHERE expires < ?').run(now);
+    return this.db.prepare('INSERT OR IGNORE INTO redeemed_sso VALUES (?,?)').run(signature, expires).changes === 1;
+  }
+
+  clearLegacyAdminPassword() {
+    this.db.prepare("DELETE FROM meta WHERE key='admin_password'").run();
   }
 
   // ---------------------------------------------------------------- 房间快照

@@ -1,3 +1,4 @@
+import { walletRead } from '../net/sso';
 import { GameEntry } from '../components/GameEntry';
 import { useEffect, useState } from 'react';
 import { ChatBubble, ChatButton, useChatBubbles, useChatSound } from '../components/Chat';
@@ -9,13 +10,10 @@ import { useNow } from './GameTable';
 export function Lobby({ view }: { view: ServerView }) {
   const [selfBal, setSelfBal] = useState<number | null>(null);
   useEffect(() => {
-    const uid = localStorage.getItem('poker.sso.uid') || '';
-    if (!uid) return;
     let alive = true;
     const load = () => {
-      fetch('/api/me/balance?uid=' + encodeURIComponent(uid))
-        .then((r) => r.json())
-        .then((d) => { if (alive && typeof d.balance === 'number') setSelfBal(d.balance); })
+      walletRead('/me/balance')
+        .then((d) => { if (alive && d && typeof d.balance === 'number') setSelfBal(d.balance); })
         .catch(() => {});
     };
     load();

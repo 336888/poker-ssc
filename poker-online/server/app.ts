@@ -9,7 +9,7 @@ import { containsBlocked } from '../src/net/moderation';
 import { normalizeCode } from '../src/net/inviteCode';
 import type { ServerMessage } from '../src/net/protocol';
 import { randomId } from '../src/net/roomServer';
-import { AdminAuth, AuthError, PlayerTokens, RateLimiter } from './auth';
+import { AdminAuth, AuthError, hashAdminPassword, PlayerTokens, RateLimiter } from './auth';
 import { Store } from './db';
 import { log } from './log';
 import { cardTables } from './cardTables.js';
@@ -35,7 +35,6 @@ export interface App {
   server: Server;
   rooms: RoomManager;
   port: number;
-  adminPassword: string;
   close(): Promise<void>;
 }
 
@@ -69,15 +68,18 @@ export async function createApp(opts: AppOptions): Promise<App> {
   // 密钥与后台密码：优先使用环境变量，否则首次启动时生成并保存到数据库
   const secret = opts.sessionSecret || store.getMeta('session_secret') || randomBytes(32).toString('hex');
   if (!opts.sessionSecret) store.setMeta('session_secret', secret);
-  let adminPassword = opts.adminPassword || store.getMeta('admin_password') || '';
-  if (!adminPassword) {
-    adminPassword = randomBytes(9).toString('base64url');
-    store.setMeta('admin_password', adminPassword);
-    if (!opts.quiet) log(`已生成后台密码：${adminPassword}（仅显示这一次，可通过环境变量 ADMIN_PASSWORD 覆盖）`);
+  const legacyPassword=store.getMeta('admin_password');
+  let verifier=store.getMeta('admin_password_hash') || '';
+  if(legacyPassword){
+    if(!verifier){
+      verifier=hashAdminPassword(legacyPassword);
+      store.setMeta('admin_password_hash',verifier);
+    }
+    store.clearLegacyAdminPassword();
   }
-
+  if(opts.adminPassword)verifier=hashAdminPassword(opts.adminPassword);
   const tokens = new PlayerTokens(secret);
-  const admin = new AdminAuth(adminPassword);
+  const admin = new AdminAuth(verifier);
   const rooms = new RoomManager(store, opts.maxRooms ?? 500);
   const walletPath = process.env.CARD_WALLET_DB || '/opt/ssc-ops/ssc_ops.db';
   const readTargets=():BotTargets=>JSON.parse(store.getMeta('bot_targets')||'{}');
@@ -152,6 +154,14 @@ export async function createApp(opts: AppOptions): Promise<App> {
     return uid;
   }
 
+  function currentWalletUser(req: IncomingMessage) {
+    const uid=walletIdentity(req);
+    if(!uid)throw new HttpError(401,'请从主站进入棋牌大厅');
+    const requested=new URL(req.url || '/', 'http://local').searchParams.get('uid');
+    if(requested!==null && requested!==uid)throw new HttpError(403,'无权访问该账户');
+    return uid;
+  }
+
   async function api(req: IncomingMessage, res: ServerResponse, path: string) {
     const method = req.method ?? 'GET';
     const ip = ipOf(req);
@@ -170,8 +180,8 @@ export async function createApp(opts: AppOptions): Promise<App> {
     }
     // ---- 上一局结算结果（结算弹窗用）
     if (method === 'GET' && path === '/lastresult') {
-      const u = new URL(req.url || '/', 'http://x').searchParams.get('uid') || '';
-      if (!u) throw new HttpError(400, '参数缺失');
+      const u=currentWalletUser(req);
+      res.setHeader('Cache-Control','private, no-store');
       const { getResult, getStreak } = await import('./results');
       const r = getResult(u) ?? {};
       return send(res, 200, { ...r, streak: getStreak(u) });
@@ -179,11 +189,8 @@ export async function createApp(opts: AppOptions): Promise<App> {
 
     // ---- 查询棋牌钱包余额（给前端显示自己用）
     if (method === 'GET' && path === '/me/balance') {
-      const uid = String(new URL(req.url || '/', 'http://x').searchParams.get('uid') || '').trim();
-      if (!/^[A-Za-z0-9_]{2,40}$/.test(uid)) {
-        send(res, 400, { error: 'uid 非法' });
-        return;
-      }
+      const uid=currentWalletUser(req);
+      res.setHeader('Cache-Control','private, no-store');
       try {
         const { getBalance } = await import('./settle');
         const r = await getBalance(uid);
@@ -201,7 +208,7 @@ export async function createApp(opts: AppOptions): Promise<App> {
       const ts = Number(body.ts || 0);
       const sig = String(body.sig || '');
       if (!uid || !ts || !sig) throw new HttpError(400, '参数缺失');
-      if (Math.abs(Math.floor(Date.now() / 1000) - ts) > 300) throw new HttpError(401, '令牌已过期');
+      if (!Number.isSafeInteger(ts) || ts > Math.floor(Date.now()/1000)+5 || Math.floor(Date.now()/1000)-ts > 60) throw new HttpError(401, '令牌已过期');
       const secret = process.env.POKER_SSO_SECRET || '';
       if (!secret) throw new HttpError(503, '单点登录未配置');
       const want = createHmac('sha256', secret).update(`${uid}:${ts}:0:`).digest('hex').slice(0, 32);
@@ -214,6 +221,9 @@ export async function createApp(opts: AppOptions): Promise<App> {
         const { rtCfg } = await import('./rtcfg');
         const minBal = rtCfg().minBal;
         if (bal < minBal) throw new HttpError(403, `余额不足 ${minBal} 元，请先充值`);
+        const now=Math.floor(Date.now()/1000);
+        if(now>ts+60 || !store.consumeSso(want,ts+60,now))throw new HttpError(401,'登录票据已使用或已过期');
+        res.setHeader('Cache-Control','no-store');
         log('单点登录', uid, `余额${bal}`);
         const expiry=Date.now()+12*3600_000;
         const cardToken=uid+'.'+expiry+'.'+tokens.sign('duel-'+expiry,uid);
@@ -268,7 +278,7 @@ export async function createApp(opts: AppOptions): Promise<App> {
     if (method === 'POST' && path === '/admin/login') {
       const body = await readJson(req);
       try {
-        return send(res, 200, { token: admin.login(ip, body.password) });
+        return send(res, 200, { token: await admin.login(ip, body.password) });
       } catch (e) {
         if (e instanceof AuthError) {
           log('后台登录失败', ip);
@@ -465,7 +475,6 @@ export async function createApp(opts: AppOptions): Promise<App> {
     server,
     rooms,
     port,
-    adminPassword,
     async close() {
       clearInterval(ping);
       clearInterval(sweep);

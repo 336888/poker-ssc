@@ -57,3 +57,11 @@ export function fingerprint(): string {
   localStorage.setItem(KEY, fp);
   return fp;
 }
+
+export function walletRead(path:'/me/balance'|'/lastresult') {
+  const token=sessionStorage.getItem('poker.walletToken');
+  if(!token)return Promise.resolve(null);
+  const base=(import.meta.env.VITE_API_URL as string)||'/api';
+  return fetch(base+path,{headers:{Authorization:'Bearer '+token},cache:'no-store'})
+    .then(r=>r.ok?r.json():null);
+}

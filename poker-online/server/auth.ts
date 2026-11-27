@@ -1,6 +1,6 @@
 // 鉴权：玩家令牌（HMAC 签名，无需存储）、后台登录会话、登录失败锁定
 
-import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomBytes, scryptSync, scrypt, timingSafeEqual } from 'node:crypto';
 
 export class PlayerTokens {
   constructor(private secret: string) {}
@@ -20,22 +20,35 @@ const SESSION_MS = 2 * 3600 * 1000;
 const MAX_FAILS = 5;
 const LOCK_MS = 60 * 1000;
 
+export function hashAdminPassword(password:string): string {
+  const salt=randomBytes(16).toString('hex');
+  return salt+':'+scryptSync(password,salt,64).toString('hex');
+}
+
 export class AdminAuth {
+  private pending = 0;
   private sessions = new Map<string, number>();
   private fails = new Map<string, { count: number; until: number }>();
 
-  constructor(private password: string) {}
+  constructor(private verifier: string) {}
 
   /** 返回会话令牌；失败时抛出带提示的错误 */
-  login(ip: string, password: unknown): string {
+  async login(ip: string, password: unknown): Promise<string> {
     const now = Date.now();
     const f = this.fails.get(ip) ?? { count: 0, until: 0 };
     if (f.until > now) throw new AuthError(429, `尝试次数过多，请 ${Math.ceil((f.until - now) / 1000)} 秒后再试`);
-    const a = Buffer.from(typeof password === 'string' ? password : '');
-    const b = Buffer.from(this.password);
-    const ok = a.length === b.length && timingSafeEqual(a, b);
+    if(!this.verifier)throw new AuthError(503,'请先配置后台登录密码');
+    if(this.pending>=4)throw new AuthError(429,'请稍后重试');
+    const [salt,digest]=this.verifier.split(':');
+    this.pending++;
+    let ok=false;
+    try {
+      const candidate=typeof password==='string' ? password : '';
+      const key=await new Promise<Buffer>((resolve,reject)=>scrypt(candidate,salt,64,(error,value)=>error?reject(error):resolve(value)));
+      ok=timingSafeEqual(key,Buffer.from(digest,'hex'));
+    }finally{this.pending--}
     if (!ok) {
-      const count = f.count + 1;
+      const count = (this.fails.get(ip)?.count ?? 0) + 1;
       this.fails.set(ip, count >= MAX_FAILS ? { count: 0, until: now + LOCK_MS } : { count, until: 0 });
       throw new AuthError(401, count >= MAX_FAILS ? '密码错误次数过多，已锁定 60 秒' : `密码错误（还可尝试 ${MAX_FAILS - count} 次）`);
     }

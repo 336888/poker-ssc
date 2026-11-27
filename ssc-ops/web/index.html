@@ -500,7 +500,7 @@ async function api(path,body,method,signal){
     const onMainSite = !/\/poker\//.test(location.pathname) && !document.getElementById('root');
     if((j.code===401 || /登录已失效|未登录/.test(j.msg||'')) && S.token && onMainSite){
       S.token=''; S.uid='';
-      try{ localStorage.removeItem('token'); localStorage.removeItem('uid'); }catch(e){}
+      try{ clearPokerCredentials();localStorage.removeItem('token'); localStorage.removeItem('uid'); }catch(e){}
       try{ toast('登录已过期，请重新登录'); }catch(e){}
       setTimeout(()=>{ try{ openLogin(); }catch(e){} }, 600);
     }
@@ -631,10 +631,13 @@ function closeM(){
 }
 $('mask').onclick=e=>{if(e.target===$('mask'))closeM();};
 
+function clearPokerCredentials(){
+  for(const key of ['card.uid','card.auth','card.room','poker.sso.uid','poker.walletToken'])sessionStorage.removeItem(key);
+}
 async function logout(){
   try{ if(S.token) await api('/api/logout',{},'POST'); }catch(e){}
   S.token='';S.uid='';S._bal='0.00';
-  localStorage.removeItem('token');localStorage.removeItem('uid');
+  clearPokerCredentials();localStorage.removeItem('token');localStorage.removeItem('uid');
   $('meName').textContent='未登录';$('meBal').textContent='0.00';$('meFrozen').textContent='0.00';
   $('meAgent').textContent='—';$('ava').textContent='游';
   const _lb = $('loginBtn');
@@ -894,7 +897,7 @@ async function claimReward(kind){
 
 function doLogout(){
   if(!confirm('确定退出登录？')) return;
-  localStorage.removeItem('token');
+  clearPokerCredentials();localStorage.removeItem('token');
   localStorage.removeItem('uid');
   S.token=''; S.uid='';
   location.reload();
@@ -952,7 +955,7 @@ async function loadMe(){
       if(parts.length){ tag.textContent=parts.join(' · '); tag.style.display=''; }
       else tag.style.display='none';
     }catch(e){}
-  }catch(e){S.token='';localStorage.removeItem('token');}
+  }catch(e){S.token='';clearPokerCredentials();localStorage.removeItem('token');}
 }
 
 const HOT_LOTS = new Set(['10015','10016','20001','20002','30001','40001','50001','60001']);
@@ -2278,7 +2281,15 @@ async function openPoker(kind){
       return;
     }
     const q = new URLSearchParams();
-    q.set('sso', sso.uid + '.' + sso.ts + '.' + sso.sig);
+    const response=await fetch('/poker/api/sso',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({uid:sso.uid,ts:sso.ts,sig:sso.sig}),cache:'no-store'});
+    const identity=await response.json();
+    if(!response.ok || identity.uid!==sso.uid || !identity.cardToken)throw new Error(identity.error||'棋牌登录失败');
+    if(sessionStorage.getItem('card.uid')!==identity.uid)sessionStorage.removeItem('card.room');
+    sessionStorage.setItem('card.uid',identity.uid);
+    sessionStorage.setItem('card.auth',identity.cardToken);
+    sessionStorage.setItem('poker.sso.uid',identity.uid);
+    sessionStorage.setItem('poker.walletToken',identity.cardToken);
     if(kind) q.set('game', kind==='ddz' ? 'doudizhu' : kind);
     // 同页跳转（避免弹窗拦截和重复开标签）
     location.href = (kind==='nn'||kind==='zjh' ? '/poker/card-table/index.html?' : '/poker/?') + q.toString();

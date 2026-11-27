@@ -1915,7 +1915,7 @@ var RoomServer = class _RoomServer {
 };
 
 // server/auth.ts
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes, scryptSync, scrypt, timingSafeEqual } from "node:crypto";
 var PlayerTokens = class {
   constructor(secret) {
     this.secret = secret;
@@ -1933,23 +1933,37 @@ var PlayerTokens = class {
 var SESSION_MS = 2 * 3600 * 1e3;
 var MAX_FAILS = 5;
 var LOCK_MS = 60 * 1e3;
+function hashAdminPassword(password) {
+  const salt = randomBytes(16).toString("hex");
+  return salt + ":" + scryptSync(password, salt, 64).toString("hex");
+}
 var AdminAuth = class {
-  constructor(password) {
-    this.password = password;
+  constructor(verifier) {
+    this.verifier = verifier;
   }
-  password;
+  verifier;
+  pending = 0;
   sessions = /* @__PURE__ */ new Map();
   fails = /* @__PURE__ */ new Map();
   /** 返回会话令牌；失败时抛出带提示的错误 */
-  login(ip, password) {
+  async login(ip, password) {
     const now = Date.now();
     const f = this.fails.get(ip) ?? { count: 0, until: 0 };
     if (f.until > now) throw new AuthError(429, `\u5C1D\u8BD5\u6B21\u6570\u8FC7\u591A\uFF0C\u8BF7 ${Math.ceil((f.until - now) / 1e3)} \u79D2\u540E\u518D\u8BD5`);
-    const a = Buffer.from(typeof password === "string" ? password : "");
-    const b = Buffer.from(this.password);
-    const ok = a.length === b.length && timingSafeEqual(a, b);
+    if (!this.verifier) throw new AuthError(503, "\u8BF7\u5148\u914D\u7F6E\u540E\u53F0\u767B\u5F55\u5BC6\u7801");
+    if (this.pending >= 4) throw new AuthError(429, "\u8BF7\u7A0D\u540E\u91CD\u8BD5");
+    const [salt, digest] = this.verifier.split(":");
+    this.pending++;
+    let ok = false;
+    try {
+      const candidate = typeof password === "string" ? password : "";
+      const key = await new Promise((resolve2, reject) => scrypt(candidate, salt, 64, (error, value) => error ? reject(error) : resolve2(value)));
+      ok = timingSafeEqual(key, Buffer.from(digest, "hex"));
+    } finally {
+      this.pending--;
+    }
     if (!ok) {
-      const count = f.count + 1;
+      const count = (this.fails.get(ip)?.count ?? 0) + 1;
       this.fails.set(ip, count >= MAX_FAILS ? { count: 0, until: now + LOCK_MS } : { count, until: 0 });
       throw new AuthError(401, count >= MAX_FAILS ? "\u5BC6\u7801\u9519\u8BEF\u6B21\u6570\u8FC7\u591A\uFF0C\u5DF2\u9501\u5B9A 60 \u79D2" : `\u5BC6\u7801\u9519\u8BEF\uFF08\u8FD8\u53EF\u5C1D\u8BD5 ${MAX_FAILS - count} \u6B21\uFF09`);
     }
@@ -2016,6 +2030,8 @@ var Store = class {
     this.db = new DatabaseSync(file);
     this.db.exec(`
       PRAGMA journal_mode = WAL;
+      PRAGMA secure_delete = ON;
+      CREATE TABLE IF NOT EXISTS redeemed_sso (signature TEXT PRIMARY KEY, expires INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS rooms (code TEXT PRIMARY KEY, snapshot TEXT NOT NULL, updated_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS history (
@@ -2044,6 +2060,13 @@ var Store = class {
   }
   setMeta(key, value) {
     this.db.prepare("INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(key, value);
+  }
+  consumeSso(signature, expires, now) {
+    this.db.prepare("DELETE FROM redeemed_sso WHERE expires < ?").run(now);
+    return this.db.prepare("INSERT OR IGNORE INTO redeemed_sso VALUES (?,?)").run(signature, expires).changes === 1;
+  }
+  clearLegacyAdminPassword() {
+    this.db.prepare("DELETE FROM meta WHERE key='admin_password'").run();
   }
   // ---------------------------------------------------------------- 房间快照
   saveRoom(snap) {
@@ -2687,14 +2710,18 @@ async function createApp(opts) {
   void Promise.resolve().then(() => (init_results(), results_exports)).then((m) => m.bindStore(store));
   const secret = opts.sessionSecret || store.getMeta("session_secret") || randomBytes2(32).toString("hex");
   if (!opts.sessionSecret) store.setMeta("session_secret", secret);
-  let adminPassword = opts.adminPassword || store.getMeta("admin_password") || "";
-  if (!adminPassword) {
-    adminPassword = randomBytes2(9).toString("base64url");
-    store.setMeta("admin_password", adminPassword);
-    if (!opts.quiet) log(`\u5DF2\u751F\u6210\u540E\u53F0\u5BC6\u7801\uFF1A${adminPassword}\uFF08\u4EC5\u663E\u793A\u8FD9\u4E00\u6B21\uFF0C\u53EF\u901A\u8FC7\u73AF\u5883\u53D8\u91CF ADMIN_PASSWORD \u8986\u76D6\uFF09`);
+  const legacyPassword = store.getMeta("admin_password");
+  let verifier = store.getMeta("admin_password_hash") || "";
+  if (legacyPassword) {
+    if (!verifier) {
+      verifier = hashAdminPassword(legacyPassword);
+      store.setMeta("admin_password_hash", verifier);
+    }
+    store.clearLegacyAdminPassword();
   }
+  if (opts.adminPassword) verifier = hashAdminPassword(opts.adminPassword);
   const tokens = new PlayerTokens(secret);
-  const admin = new AdminAuth(adminPassword);
+  const admin = new AdminAuth(verifier);
   const rooms = new RoomManager(store, opts.maxRooms ?? 500);
   const walletPath = process.env.CARD_WALLET_DB || "/opt/ssc-ops/ssc_ops.db";
   const readTargets = () => JSON.parse(store.getMeta("bot_targets") || "{}");
@@ -2766,6 +2793,13 @@ async function createApp(opts) {
       throw new HttpError(401, "\u8BF7\u4ECE\u4E3B\u7AD9\u91CD\u65B0\u8FDB\u5165\u68CB\u724C\u5927\u5385");
     return uid;
   }
+  function currentWalletUser(req) {
+    const uid = walletIdentity(req);
+    if (!uid) throw new HttpError(401, "\u8BF7\u4ECE\u4E3B\u7AD9\u8FDB\u5165\u68CB\u724C\u5927\u5385");
+    const requested = new URL(req.url || "/", "http://local").searchParams.get("uid");
+    if (requested !== null && requested !== uid) throw new HttpError(403, "\u65E0\u6743\u8BBF\u95EE\u8BE5\u8D26\u6237");
+    return uid;
+  }
   async function api(req, res, path) {
     const method = req.method ?? "GET";
     const ip = ipOf(req);
@@ -2787,18 +2821,15 @@ async function createApp(opts) {
       }
     }
     if (method === "GET" && path === "/lastresult") {
-      const u = new URL(req.url || "/", "http://x").searchParams.get("uid") || "";
-      if (!u) throw new HttpError(400, "\u53C2\u6570\u7F3A\u5931");
+      const u = currentWalletUser(req);
+      res.setHeader("Cache-Control", "private, no-store");
       const { getResult: getResult2, getStreak: getStreak2 } = await Promise.resolve().then(() => (init_results(), results_exports));
       const r = getResult2(u) ?? {};
       return send(res, 200, { ...r, streak: getStreak2(u) });
     }
     if (method === "GET" && path === "/me/balance") {
-      const uid = String(new URL(req.url || "/", "http://x").searchParams.get("uid") || "").trim();
-      if (!/^[A-Za-z0-9_]{2,40}$/.test(uid)) {
-        send(res, 400, { error: "uid \u975E\u6CD5" });
-        return;
-      }
+      const uid = currentWalletUser(req);
+      res.setHeader("Cache-Control", "private, no-store");
       try {
         const { getBalance: getBalance2 } = await Promise.resolve().then(() => (init_settle(), settle_exports));
         const r = await getBalance2(uid);
@@ -2814,7 +2845,7 @@ async function createApp(opts) {
       const ts = Number(body.ts || 0);
       const sig2 = String(body.sig || "");
       if (!uid || !ts || !sig2) throw new HttpError(400, "\u53C2\u6570\u7F3A\u5931");
-      if (Math.abs(Math.floor(Date.now() / 1e3) - ts) > 300) throw new HttpError(401, "\u4EE4\u724C\u5DF2\u8FC7\u671F");
+      if (!Number.isSafeInteger(ts) || ts > Math.floor(Date.now() / 1e3) + 5 || Math.floor(Date.now() / 1e3) - ts > 60) throw new HttpError(401, "\u4EE4\u724C\u5DF2\u8FC7\u671F");
       const secret2 = process.env.POKER_SSO_SECRET || "";
       if (!secret2) throw new HttpError(503, "\u5355\u70B9\u767B\u5F55\u672A\u914D\u7F6E");
       const want = createHmac3("sha256", secret2).update(`${uid}:${ts}:0:`).digest("hex").slice(0, 32);
@@ -2826,6 +2857,9 @@ async function createApp(opts) {
         const { rtCfg: rtCfg2 } = await Promise.resolve().then(() => (init_rtcfg(), rtcfg_exports));
         const minBal = rtCfg2().minBal;
         if (bal < minBal) throw new HttpError(403, `\u4F59\u989D\u4E0D\u8DB3 ${minBal} \u5143\uFF0C\u8BF7\u5148\u5145\u503C`);
+        const now = Math.floor(Date.now() / 1e3);
+        if (now > ts + 60 || !store.consumeSso(want, ts + 60, now)) throw new HttpError(401, "\u767B\u5F55\u7968\u636E\u5DF2\u4F7F\u7528\u6216\u5DF2\u8FC7\u671F");
+        res.setHeader("Cache-Control", "no-store");
         log("\u5355\u70B9\u767B\u5F55", uid, `\u4F59\u989D${bal}`);
         const expiry = Date.now() + 12 * 36e5;
         const cardToken = uid + "." + expiry + "." + tokens.sign("duel-" + expiry, uid);
@@ -2875,7 +2909,7 @@ async function createApp(opts) {
     if (method === "POST" && path === "/admin/login") {
       const body = await readJson(req);
       try {
-        return send(res, 200, { token: admin.login(ip, body.password) });
+        return send(res, 200, { token: await admin.login(ip, body.password) });
       } catch (e) {
         if (e instanceof AuthError) {
           log("\u540E\u53F0\u767B\u5F55\u5931\u8D25", ip);
@@ -3053,7 +3087,6 @@ async function createApp(opts) {
     server,
     rooms,
     port,
-    adminPassword,
     async close() {
       clearInterval(ping);
       clearInterval(sweep);

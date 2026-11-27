@@ -1,3 +1,4 @@
+import { walletRead } from '../net/sso';
 import { HallReturn } from '../components/GameEntry';
 import { CSSProperties, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { ChatBubble, ChatButton, useChatBubbles, useChatSound } from '../components/Chat';
@@ -149,10 +150,7 @@ export function GameTable({ view }: { view: ServerView }) {
   useEffect(() => {
     let alive = true;
     const load = () => {
-      const uid = localStorage.getItem('poker.sso.uid') || '';
-      if (!uid) return;
-      fetch('/api/me/balance?uid=' + encodeURIComponent(uid))
-        .then((r) => r.json())
+      walletRead('/me/balance')
         .then((d) => {
           if (alive && d && typeof d.balance === 'number') setMyBalance(d.balance);
         })
@@ -634,9 +632,7 @@ function ResultModal({ view, isHost, onLeave, send }: { view: ServerView; isHost
   const [shown, setShown] = useState(0);
   useEffect(() => {
     let alive = true;
-    const apiBase = (import.meta.env.VITE_API_URL as string) || '/api';
-    fetch(`${apiBase}/lastresult?uid=${encodeURIComponent(you)}`)
-      .then((r) => r.json())
+    walletRead('/lastresult')
       .then((d) => { if (alive && d && typeof d.delta === 'number') setMoney(d); })
       .catch(() => {});
     fetch(`/api/poker/pnl?uid=${encodeURIComponent(you)}`)
