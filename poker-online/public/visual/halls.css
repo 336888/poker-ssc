@@ -1,0 +1,15 @@
+/* Four matched studio illustrations, upper left clockwise: lottery, poker, slots, live. */
+#mainTabs .mt[data-k]{height:clamp(76px,20vw,116px);background-image:url('./halls.webp')!important;background-size:200% 200%!important;color:#fff!important;box-shadow:inset 0 0 0 1px #ffffff2b,0 3px 10px #16283b24}
+#mainTabs .mt[data-k=lot]{background-position:left top!important}
+#mainTabs .mt[data-k=chess]{background-position:right top!important}
+#mainTabs .mt[data-k=live]{background-position:left bottom!important}
+#mainTabs .mt[data-k=slot]{background-position:right bottom!important}
+#mainTabs .hall-art,.entry-cover .entry-fan{display:none}
+#mainTabs .mt strong{text-shadow:0 1px 4px #061325}
+#mainTabs .mt[aria-pressed=true]{outline:2px solid #efc269;outline-offset:-3px}
+.entry-screen .entry-cover{min-height:145px;align-content:end;justify-items:start;padding:22px;background:#12392c url('./halls.webp') right top/200% 200%;color:white;text-shadow:0 1px 4px #091a1a}
+.entry-screen .entry-cover p{background:#102c32db;border-radius:6px;padding:3px 8px}
+#v-dfp .vhead,#v-open .vhead{box-shadow:inset 4px 0 #338bd9}
+#v-me .panel,#v-detail .panel,#v-open .panel{border-radius:14px;box-shadow:0 2px 10px #18334810}
+body:has(#tabs) .box{border-radius:12px;border:1px solid #d6dfeb;box-shadow:0 2px 10px #1b355610}
+body:has(#tabs) table th{background:#edf3f9;color:#273d55}
