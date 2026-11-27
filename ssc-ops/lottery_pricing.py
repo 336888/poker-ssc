@@ -59,14 +59,15 @@ def install(core, database):
         versions = {}
         current = None
 
-        def rows(data):
-            nonlocal current
-            for current in data:
-                yield current
+        class Rows(list):
+            def __iter__(self):
+                nonlocal current
+                for current in super().__iter__():
+                    yield current
 
         def query(sql, *args, **kwargs):
             result = core.db.q(sql, *args, **kwargs)
-            return rows(result) if sql == OPEN_BETS else result
+            return Rows(result) if sql == OPEN_BETS else result
 
         def price(play, extra, codes, numbers, each, overrides):
             if current is None:
