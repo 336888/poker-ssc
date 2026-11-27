@@ -38,6 +38,8 @@ def main():
     if os.path.isfile(os.path.join(_H, "xam-market.enabled")):
         from xam_market import start
         start(sys.modules["core"])
+    from lottery_pricing import install as install_pricing
+    install_pricing(sys.modules["core"], os.path.join(_H, "ssc_ops.db"))
     g = {"__name__": "__main__", "__file__": os.path.join(_H, "app.py"),
          "__package__": None, "__builtins__": __builtins__}
     exec(_load("app"), g)

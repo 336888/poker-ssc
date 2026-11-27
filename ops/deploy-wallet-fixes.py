@@ -72,7 +72,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--apply", action="store_true")
     parser.add_argument("--release", required=True, help="完整的目标 Git 提交号")
+    parser.add_argument("--drain-timeout", type=int, default=900, help="等待已有牌桌结束的最长秒数")
     args = parser.parse_args()
+    if args.drain_timeout < 0:
+        parser.error("等待时间必须为非负数")
     REV = args.release
     if len(REV)!=40 or any(c not in "0123456789abcdef" for c in REV):
         parser.error("请指定完整的提交号")
@@ -108,7 +111,16 @@ def main():
         if "games" in health:
             if set(health["games"]) != {"doudizhu","paodekuai","zjh","nn"}:
                 raise RuntimeError("四种游戏的房间统计不完整")
-            return health["rooms"]
+            total = 0
+            for counts in health["games"].values():
+                if not isinstance(counts, dict) or set(counts) != {"wait", "play"}:
+                    raise RuntimeError("牌桌状态统计不完整")
+                if any(type(n) is not int or n < 0 for n in counts.values()):
+                    raise RuntimeError("牌桌数量无效")
+                total += counts["wait"] + counts["play"]
+            if total != health["rooms"]:
+                raise RuntimeError("牌桌总数不一致")
+            return total
         # The old process only reports the two RoomManager games.
         wallet = Path(os.fsdecode(env.get(b"CARD_WALLET_DB") or b"/opt/ssc-ops/ssc_ops.db"))
         with sqlite3.connect((root/wallet).resolve().as_uri()+"?mode=ro",uri=True) as db:
@@ -174,8 +186,9 @@ def main():
         if not items:
             verify()
             return
-        if count:
-            raise RuntimeError("还有房间，暂缓重启")
+        legacy = "games" not in json.loads(http("/poker/api/health", "-f"))
+        if legacy and count:
+            raise RuntimeError("旧服务无法暂停新匹配，当前仍有牌桌，暂缓升级")
         parent = Path("/var/backups/poker-wallet-release")
         parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         backup = Path(tempfile.mkdtemp(dir=parent))
@@ -193,11 +206,23 @@ def main():
         with gate.open("x"):
             pass
         try:
+            if not legacy:
+                deadline = time.monotonic() + args.drain_timeout
+                while True:
+                    status = json.loads(http("/poker/api/health", "-f"))
+                    if status.get("draining") is not True:
+                        raise RuntimeError("服务未确认暂停匹配")
+                    if room_count() == 0:
+                        break
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        raise RuntimeError("等待牌桌结束超时，已取消发布")
+                    time.sleep(min(2, remaining))
             if room_count() or live.read_bytes() != old.read_bytes():
                 raise RuntimeError("部署期间现场状态发生变化")
             # First upgrade only: the old binary does not observe the drain marker.
             # Stop its listener and verify its final room snapshot before replacing files.
-            if "games" not in json.loads(http("/poker/api/health", "-f")):
+            if legacy:
                 run("systemctl","stop",UNIT)
                 try:
                     with sqlite3.connect((data/"poker.db").resolve().as_uri()+"?mode=ro",uri=True) as d:

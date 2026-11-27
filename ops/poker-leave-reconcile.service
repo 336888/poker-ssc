@@ -1,0 +1,14 @@
+[Unit]
+Description=Reconcile poker leave fees against committed wallet receipts
+After=poker.service
+PartOf=poker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 -B /usr/local/lib/poker-ops/reconcile-leave-fees.py
+NoNewPrivileges=true
+PrivateTmp=true
+UMask=0077
+
+[Install]
+WantedBy=poker.service
