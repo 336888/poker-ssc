@@ -9,3 +9,9 @@
 .five-table .me__actions{flex-wrap:wrap}
 .five-table .podium__row{display:flex;justify-content:space-between;gap:6px}
 @media(max-width:480px){.five-table .me__bar{grid-template-columns:1fr auto}.five-table .me__actions .btn{padding:6px 9px;min-width:0}.five-table .pcard--lg{width:clamp(46px,14vw,65px)}}
+.five-hand:has(button[aria-pressed="true"]),.five-hand:has(button:enabled){padding-top:24px}
+.five-hand button{position:relative}
+.five-hand .pcard{transition:transform 140ms ease-out}
+.five-hand button[aria-pressed="true"]{z-index:1}
+.five-hand button[aria-pressed="true"] .pcard{transform:translateY(-20px);outline:2px solid var(--accent)}
+@media(prefers-reduced-motion:reduce){.five-hand .pcard{transition:none}}
