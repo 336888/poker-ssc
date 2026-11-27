@@ -32,7 +32,7 @@ export function hardProb(game:BotGame): number {
   return Math.max(0, Math.min(1, p));
 }
 
-export async function startRtCfg() {
+export async function startRtCfg(readBotNames: () => string[]) {
   if (started) return;
   started = true;
   const pull = async () => {
@@ -48,27 +48,22 @@ export async function startRtCfg() {
           actMs: Number(j.data.actMs) || 250,
           sameDev: j.data.sameDev === 0 ? 0 : 1,
           minBal: Number(j.data.minBal) || 50,
-          names: Array.isArray(j.data.names) ? j.data.names : [],
+          names: cfg.names,
         };
       }
     } catch (e) {
       console.log('拉取配置失败', (e as Error).message);
     }
   };
-  const pullNames = async () => {
+  const pullNames = () => {
     try {
-      const r = await fetch(MAIN + '/api/bot/names?n=200', { signal: AbortSignal.timeout(5000) });
-      const j = await r.json();
-      if (j && j.code === 0 && Array.isArray(j.data) && j.data.length) {
-        cfg = { ...cfg, names: j.data };
-        console.log('名字池已加载', j.data.length, '个，例如', j.data.slice(0, 3).join(','));
-      } else {
-        console.log('名字池异常', JSON.stringify(j).slice(0, 80));
-      }
+      const names = readBotNames();
+      cfg = { ...cfg, names };
+      console.log('主站机器人名字已同步', names.length);
     } catch (e) { console.log('名字池拉取失败', (e as Error).message); }
   };
   // 启动时先等名字池就绪（避免首批补位用旧名字）
   await Promise.all([pull(), pullNames()]);
   setInterval(pull, 60_000);
-  setInterval(pullNames, 300_000);
+  setInterval(pullNames, 60_000);
 }
