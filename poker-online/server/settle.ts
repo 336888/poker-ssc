@@ -1,3 +1,4 @@
+import { consumeHold } from './collateral';
 import { runningMultiplier } from '../src/game/walletFees';
 // 资金结算：把牌局结果同步到主站余额
 // 规则：底分 1 元；第 1 名 +2、第 3 名 -2（第 2 名不变）；赢家抽水 5%
@@ -112,6 +113,7 @@ export function bookRound(id:string, deltas:{uid:string;delta:number}[], memo = 
     db.exec('CREATE TABLE IF NOT EXISTS poker_round_receipts(id TEXT PRIMARY KEY, receipt TEXT NOT NULL)');
     const prior=db.prepare('SELECT receipt FROM poker_round_receipts WHERE id=?').get(id);
     if(prior){db.exec('COMMIT');return {fresh:false,moves:JSON.parse(String(prior.receipt)) as {uid:string;delta:number;balance:number}[]}}
+    consumeHold(db,id);
     const moves=deltas.map(({uid,delta})=>{
       const row=db.prepare('UPDATE users SET poker_balance=round(poker_balance+?,2) WHERE uid=? AND poker_balance+?>=0 RETURNING poker_balance').get(delta,uid,delta);
       if(!row)throw new Error('钱包不存在或余额不足');
