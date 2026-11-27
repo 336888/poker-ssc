@@ -3,7 +3,10 @@ import { DatabaseSync } from 'node:sqlite';
 import { randomInt, randomUUID } from 'node:crypto';
 import { three, bull, bullScore, compare, point } from '../public/card-table/rules.js';
 
-const tableNames=['青竹','听雨','云舟','松月','南山'];
+function assignBotNames(users, names = []) {
+  const pool = [...new Set(names)].filter(name => !users.includes(name));
+  return users.map(uid => uid != null || !pool.length ? null : pool.splice(randomInt(pool.length), 1)[0]);
+}
 
 export function cardTables(path, config, clock = Date.now) {
   let db;
@@ -30,6 +33,7 @@ export function cardTables(path, config, clock = Date.now) {
   }
   function get(sql,...args){const row=db.prepare(sql).get(...args);return row && JSON.parse(row.state)}
   function begin(r){
+    r.botNames=assignBotNames(r.users,config(r.game).names);
     r.phase='play';
     r.paid=r.users.map(()=>1);
     r.active=r.users.map(()=>true);
@@ -148,10 +152,12 @@ export function cardTables(path, config, clock = Date.now) {
       const me=r.users.indexOf(uid), reveal=r.phase==='done'&&Boolean(r.hands);
       const wallets=db.prepare('SELECT uid,poker_balance FROM users WHERE uid IN (SELECT value FROM json_each(?))').all(JSON.stringify(r.users));
       const balances=new Map(wallets.map(row=>[row.uid,row.poker_balance]));
-      const configured = config(r.game).names;
-      const names = Array.isArray(configured) && configured.length ? configured : tableNames;
+      if (r.phase==='play' && !r.botNames) {
+      r.botNames=assignBotNames(r.users,config(r.game).names);
+      save(r);
+    }
       return {id:r.id,rev:r.rev,game:r.game,phase:r.phase,due:r.due,me,seats:r.users.map((u,i)=>({
-          name:u ?? (r.phase==='wait'?null:names[i % names.length]),balance:balances.get(u) ?? null,
+          name:u ?? (r.phase==='wait'?null:(r.botNames?.[i] || '机器人')),balance:balances.get(u) ?? null,
           seat:i,kind:u?'真人':r.phase==='wait'?'空位':'机器人',active:r.active?.[i]!==false,
           acting:r.phase==='play'&&r.turn===i,paid:r.paid[i],delta:r.delta?.[i],
           hand:reveal?r.hands[i]:[],handCount:r.hands?.[i]?.length ?? 0,ready:r.levels?.[i]!=null
