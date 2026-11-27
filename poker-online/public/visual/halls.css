@@ -395,3 +395,39 @@ body:has(#v-games.on) {background:#10392e url('./jade-brocade.webp') center top/
   .seat__avatar::after { width: 14px; height: 14px; }
   .me__bar .me__who::before { flex-basis: 16px; height: 16px; }
 }
+
+/* Felt continues from the play area down to the player's hand. */
+.game:has(.me) {
+  background: #0c3026;
+}
+.game .me {
+  background: linear-gradient(180deg, #123d2f 0%, #0b2a22 100%);
+  color: #f8f1dc;
+  border: 0;
+  border-radius: 0;
+  box-shadow: inset 0 1px #c7a86855;
+}
+.game .me .hand, .game .me .me__bar, .game .me .me__actions {
+  background: transparent;
+}
+.game .me .me__who, .game .me .me__name, .game .me .me__who strong {
+  color: #faf4e3;
+}
+.game .me .me__who .muted, .game .me .hand__empty {
+  color: #c7d9cc;
+}
+.game .me .me__bal {
+  background: #204d3b;
+  color: #e2f3ce;
+  font-variant-numeric: tabular-nums;
+}
+.game .table .seat .seat__top .seat__name {
+  color: #193628;
+  text-shadow: none;
+}
+.game .table .pile__label, .game .table .pile__hint {
+  color: #fff2ce;
+  background: #14372d;
+  box-shadow: inset 0 0 0 1px #c6ab6766;
+  text-shadow: none;
+}
