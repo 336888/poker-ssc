@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => ({
   plugins: [react()],
+  build: { rollupOptions: { input: ['index.html', 'card-table/index.html'] } },
   base: mode === 'online' ? '/poker/' : '/',
   server: {
     port: 5173,

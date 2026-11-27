@@ -23,6 +23,8 @@ interface SeatProps {
   /** 由 AI 出牌（AI、模拟玩家、托管、掉线），轮到时显示"思考中" */
   thinking?: boolean;
   bidding?: boolean;
+  actionLabel?: string;
+  seatLabel?: string;
   chat?: ChatMessage;
 }
 
@@ -30,7 +32,7 @@ export function rankLabel(rank: number) {
   return rank === 1 ? '赢家' : `第${['', '一', '二', '三', '四', '五', '六', '七', '八'][rank] ?? rank}名`;
 }
 
-export function Seat({ player, cards, isTurn, rank, role, teammate, remaining, totalSeconds, style, compact, hideCount, thinking, bidding, chat }: SeatProps) {
+export function Seat({ player, cards, isTurn, rank, role, teammate, remaining, totalSeconds, style, compact, hideCount, thinking, bidding, actionLabel, seatLabel, chat }: SeatProps) {
   const fan = Math.min(5, cards);
   const alert = !hideCount && rank === null && cards > 0 && cards <= 2 ? (cards === 1 ? '报单' : '报双') : null;
   return (
@@ -55,7 +57,7 @@ export function Seat({ player, cards, isTurn, rank, role, teammate, remaining, t
             )}
             {role === 'landlord' && <span className="role role--landlord">地主</span>}
             {role === 'farmer' && <span className="role role--farmer">{teammate ? '农民 · 队友' : '农民'}</span>}
-            {!role && <span className="muted">{player.online ? '在线' : '离线'}</span>}
+            {!role && <span className="muted">{seatLabel ?? (player.online ? '在线' : '离线')}</span>}
           </div>
         </div>
       </div>
@@ -88,7 +90,7 @@ export function Seat({ player, cards, isTurn, rank, role, teammate, remaining, t
             </span>
           ) : (
             <span>
-              {bidding ? '叫地主中' : '出牌中'}
+              {actionLabel ?? (bidding ? '叫地主中' : '出牌中')}
               {remaining !== null ? ` · ${Math.ceil(remaining)}s` : ''}
             </span>
           )}
