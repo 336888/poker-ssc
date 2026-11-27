@@ -30,18 +30,10 @@ export type Listener = (msg: ServerMessage) => void;
 const OFFLINE_AFTER_MS = 6000;
 const OFFLINE_TURN_GRACE_MS = 3000;
 // 纯 AI 座位也用真实昵称（和补位池错开，避免同名）
-const AI_NAMES = ['铁柱哥', '胖虎兄', '孤独患者', '浪迹天涯', '江湖浪子',
-                  '独来独往', '今晚吃鸡', '幸运星66', '大吉大利8', 'liuyang666'];
+
 // 补位玩家名字池：模仿真实玩家昵称（小名、网名、数字号混排）
 // 补位玩家名字池：真实玩家常见昵称（网名/数字号/土味混排，避免"阿杰、小美"这种 AI 感）
-const SIM_NAMES = [
-  '往事随风', '笑看人生', '财运亨通', '一路发', '大杀四方', '赌神在世',
-  '稳中求胜', '顺其自然', '淡忘一切', '追风少年', '孤独患者', '浪迹天涯',
-  '夜猫子', '今晚吃鸡', '不服就干', '常胜将军', '江湖浪子', '独来独往',
-  '老张888', '阿良9527', '小胖123', '铁柱哥', '二狗子', '胖虎兄',
-  '玩家8823', '用户6677', '幸运星66', '大吉大利8', '5201314', '8888888',
-  '13966558822', 'wangwei88', 'liuyang666', 'qq882399', 'zhanghao520', 'chenjie123',
-];
+
 const CHAT_KEEP = 30;
 const CHAT_MIN_INTERVAL_MS = 1500;
 const CHAT_BURST = { count: 5, windowMs: 15000 };
@@ -528,11 +520,11 @@ export class RoomServer {
     if (this.humans().length >= this.capacity()) throw new GameError('房间已满');
     const used = new Set(this.room.players.map((p) => p.name));
     // 名字跟随主系统假人池，随机取
-    const pool = rtCfg().names?.length ? rtCfg().names : SIM_NAMES;
+    const pool = rtCfg().names;
     const avail = pool.filter((n) => !used.has(n));
     const name = avail.length
       ? avail[Math.floor(Math.random() * avail.length)]
-      : this.uniqueName(pool[0] || '玩家');
+      : this.uniqueName('机器人');
     const now = Date.now();
     const id = randomId('sim');
     this.room.players.push({
@@ -610,7 +602,7 @@ export class RoomServer {
     this.normalizeConfig();
     let seatsNeeded = 0;
     const usedNames = new Set(this.room.players.map((p) => p.name));
-    const aiNames = AI_NAMES.filter((n) => !usedNames.has(n));
+    const aiNames = rtCfg().names.filter((n) => !usedNames.has(n));
     for (let i = 0; i < seatsNeeded; i++) {
       const id = randomId('ai');
       const now = Date.now();
