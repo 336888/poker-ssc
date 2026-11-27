@@ -15,3 +15,11 @@
 .five-hand button[aria-pressed="true"]{z-index:1}
 .five-hand button[aria-pressed="true"] .pcard{transform:translateY(-20px);outline:2px solid var(--accent)}
 @media(prefers-reduced-motion:reduce){.five-hand .pcard{transition:none}}
+.entry-controls .mini-bal {color:#f5e2ac;background:#20392d}
+.five-table .seat__meta {display:flex;flex-wrap:wrap;align-items:center;gap:2px}
+.five-table .seat__bal {margin-left:0;font-variant-numeric:tabular-nums}
+@media(max-width:520px){
+  .five-table .seat {width:clamp(100px,30vw,150px);padding:5px}
+  .five-table .seat__top {gap:4px}
+  .five-table .seat__bal {padding:0 2px}
+}

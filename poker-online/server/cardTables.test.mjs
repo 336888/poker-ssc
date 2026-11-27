@@ -19,7 +19,11 @@ test('五人匹配、单次扣款、断线恢复、机器人补位及超时结�
       const ids=['a','b','c','d','e'];
       const entries=ids.map(uid=>send(uid,'join',{},game));
       assert.equal(new Set(entries.map(s=>s.id)).size,1);
+      assert.deepEqual(entries[0].seats.map(s=>s.name),['a',null,null,null,null]);
+      assert.equal(entries[0].seats[0].balance,entries[0].wallet);
       let r=entries[4];
+      assert.deepEqual(r.seats.map(s=>s.name),ids);
+      for(const seat of r.seats) assert.equal(seat.balance,db.prepare('SELECT poker_balance FROM users WHERE uid=?').get(seat.name).poker_balance);
       assert.equal(r.phase,'play');
       let moves=0;
       while(r.phase==='play'){

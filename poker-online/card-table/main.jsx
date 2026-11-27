@@ -18,7 +18,7 @@ let pollController = null;
 let room = null, token = sessionStorage.getItem('card.auth'), busy = false, timer, message = '', authenticated = false;
 const nameOf = game => game === 'nn' ? '牛牛' : '炸金花';
 const describe = n => ({id:String(n), deck:0, rank:rank(n), suit:['D','C','H','S'][suit(n)]});
-const seatName = i => (i+1)+'号位';
+const seatName = seat => seat.name || (seat.seat+1)+'号位';
 
 function Screen(){
   const [picked,setPicked]=useState([]);
@@ -42,8 +42,9 @@ function Screen(){
   };
   if(!s || s.phase==='wait')return <GameEntry title={title} detail="5 人成局 · 每席底注 1" onReturn={returnToHall}>
     {s && <div className="mini-seats">{s.seats.map((v,i)=><div key={i} className={'mini-seat'+(v.kind==='空位'?' mini-seat--empty':'')}>
-      <div className="mini-seat__no">{i+1}</div>{v.kind==='空位'?<div className="mini-ava-empty">+</div>:<Avatar name={seatName(i)} kind="human" size={34}/>}
-      <div className="mini-seat__name">{v.kind==='空位'?'匹配中…':seatName(i)} {i===s.me?'（你）':''}</div></div>)}</div>}
+      <div className="mini-seat__no">{i+1}</div>{v.kind==='空位'?<div className="mini-ava-empty">+</div>:<Avatar name={seatName(v)} kind="human" size={34}/>}
+      <div className="mini-seat__name"><span className="mini-name-txt">{v.kind==='空位'?'匹配中…':seatName(v)}{i===s.me && <span className="mini-me">你</span>}</span>
+        {typeof v.balance==='number' && <span className="mini-bal">￥{v.balance.toFixed(2)}</span>}</div></div>)}</div>}
     {(message||s)&&<p className="mini-tip" role="status">{message || (s?'正在匹配，约 '+Math.max(0,Math.ceil((s.due-Date.now())/1000))+' 秒后补齐空席':'')}</p>}
     <button className="mini-start" disabled={!authenticated || busy} onClick={()=>action(s?'cancel':'join')}>{s?'取消匹配并退回底注':'开始游戏 · 投入 1 并匹配'}</button>
     <div className="mini-foot"><button className="btn btn--text" onClick={()=>setRules(true)}>规则</button></div>{rulesPanel}</GameEntry>;
@@ -53,15 +54,15 @@ function Screen(){
   const cost=s.base*(s.seen?2:1);
   return <div className="game five-table"><header className="topbar topbar--game"><HallReturn onReturn={()=>done?returnToHall():setLeaving(true)}/><div className="game__status"><span className="chip chip--mode">{title}</span><span className="chip">五人桌</span></div><button className="btn btn--text" onClick={()=>setRules(true)}>规则</button></header>
     <main className="table"><div className="table__spot"/>{positions.map(([x,y],i)=>{
-      const j=(s.me+i+1)%5,v=s.seats[j];return <Seat key={j} player={{name:seatName(j),kind:'human',online:true}} isTurn={v.acting} cards={v.active?count:0} rank={null} compact role={null} remaining={null} actionLabel={game==='nn'?'组牛中':'行动中'} seatLabel={!v.active?'已弃牌':v.ready?'已组牛':'已入座'} hideCount={!v.active} style={{left:x+'%',top:y+'%'}}/>})}
+      const j=(s.me+i+1)%5,v=s.seats[j];return <Seat key={j} player={{name:seatName(v),kind:'human',online:true,balance:v.balance}} isTurn={v.acting} cards={v.active?count:0} rank={null} compact role={null} remaining={null} actionLabel={game==='nn'?'组牛中':'行动中'} seatLabel={!v.active?'已弃牌':v.ready?'已组牛':v.balance==null?'投入 ￥'+v.paid:'已入座'} hideCount={!v.active} style={{left:x+'%',top:y+'%'}}/>})}
       <div className="five-pot">底池 {s.pot}</div></main>
-    <section className="me"><div className="me__bar"><div className="me__who"><strong>我 · {seatName(s.me)}</strong><span className="me__bal">￥{s.wallet.toFixed(2)}</span></div><span role="status" className="turn-flag">{message || (s.turn?'轮到你':'等待对手')}</span></div>
-      <div className="me__actions">{s.turn&&!done&&(game==='nn'?<>{btn('确认三张','manual',undefined,picked.length!==3)}{btn('自动摊牌','auto')}{btn('报无牛','none')}</>:<>{!s.seen&&btn('看牌','look')}{btn('跟注 '+cost,'call')}{s.base<5&&btn('加注 '+((s.base+1)*(s.seen?2:1)),'raise')}{btn('弃牌','fold')}{s.seats.filter(v=>v.seat!==s.me&&v.active).map(v=>btn('比 '+seatName(v.seat)+' · '+cost,'compare',v.seat))}</>)}</div>
+    <section className="me"><div className="me__bar"><div className="me__who"><strong>我 · {seatName(s.seats[s.me])}</strong><span className="me__bal">￥{s.wallet.toFixed(2)}</span></div><span role="status" className="turn-flag">{message || (s.turn?'轮到你':'等待对手')}</span></div>
+      <div className="me__actions">{s.turn&&!done&&(game==='nn'?<>{btn('确认三张','manual',undefined,picked.length!==3)}{btn('自动摊牌','auto')}{btn('报无牛','none')}</>:<>{!s.seen&&btn('看牌','look')}{btn('跟注 '+cost,'call')}{s.base<5&&btn('加注 '+((s.base+1)*(s.seen?2:1)),'raise')}{btn('弃牌','fold')}{s.seats.filter(v=>v.seat!==s.me&&v.active).map(v=>btn('比 '+seatName(v)+' · '+cost,'compare',v.seat))}</>)}</div>
       <div className="five-hand">{Array.from({length:count},(_,i)=>{
         const n=s.hand[i],selected=picked.includes(i);return <button key={i} disabled={!s.turn||done||game!=='nn'} aria-pressed={selected} onClick={()=>setPicked(selected?picked.filter(k=>k!==i):picked.length<3?[...picked,i]:picked)}>
         <PlayingCard card={n==null?undefined:describe(n)} size="lg" selected={selected}/></button>})}</div></section>
     {done && <Modal><div className={'result '+(s.delta>0?'result--win':'')}><h2 className="result__title">本局结算</h2><p>{title} · {game==='nn'?'牛点 '+(s.level??0):s.hand.length?['单张','对子','顺子','同花','同花顺','豹子'][three(s.hand)[0]]:''} · 我的净额 {s.delta}</p>
-      <ol className="podium">{s.seats.map((v,i)=><li className="podium__row" key={i}><strong>{seatName(i)}{i===s.me?'（你）':''}</strong><span>{v.hand.map(n=>'23456789TJQKA'[rank(n)-2]+'♦♣♥♠'[suit(n)]).join(' ')}</span><b>{v.delta}</b></li>)}</ol>
+      <ol className="podium">{s.seats.map((v,i)=><li className="podium__row" key={i}><strong>{seatName(v)}{i===s.me?'（你）':''}</strong><span>{v.hand.map(n=>'23456789TJQKA'[rank(n)-2]+'♦♣♥♠'[suit(n)]).join(' ')}</span><b>{v.delta}</b></li>)}</ol>
       {message&&<p role="alert">{message}</p>}<a className="btn btn--ghost" href="/">返回大厅</a> {btn('再匹配一局','join')}</div></Modal>}{rulesPanel}{leaving&&<Modal onClose={()=>setLeaving(false)}><h2>返回大厅？</h2><p>本局继续进行，超时将按本桌规则处理。</p><div className="row-end"><button className="btn btn--ghost" onClick={()=>setLeaving(false)}>取消</button><button className="btn btn--danger" onClick={returnToHall}>确认返回大厅</button></div></Modal>}</div>;
 }
 function paint(){root.render(<Screen key={room?.id || requested}/>);}

@@ -2123,6 +2123,7 @@ function bullScore(cards) {
 }
 
 // server/cardTables.js
+var tableNames = ["\u9752\u7AF9", "\u542C\u96E8", "\u4E91\u821F", "\u677E\u6708", "\u5357\u5C71"];
 function cardTables(path, config, clock = Date.now) {
   let db;
   function open() {
@@ -2338,6 +2339,8 @@ function cardTables(path, config, clock = Date.now) {
         }
       }
       const me = r.users.indexOf(uid), reveal = r.phase === "done" && Boolean(r.hands);
+      const wallets = db.prepare("SELECT uid,poker_balance FROM users WHERE uid IN (SELECT value FROM json_each(?))").all(JSON.stringify(r.users));
+      const balances = new Map(wallets.map((row) => [row.uid, row.poker_balance]));
       return {
         id: r.id,
         rev: r.rev,
@@ -2346,6 +2349,8 @@ function cardTables(path, config, clock = Date.now) {
         due: r.due,
         me,
         seats: r.users.map((u, i) => ({
+          name: u ?? (r.phase === "wait" ? null : tableNames[i]),
+          balance: balances.get(u) ?? null,
           seat: i,
           kind: u ? "\u771F\u4EBA" : r.phase === "wait" ? "\u7A7A\u4F4D" : "\u673A\u5668\u4EBA",
           active: r.active?.[i] !== false,
@@ -2361,7 +2366,7 @@ function cardTables(path, config, clock = Date.now) {
         pot: r.paid.reduce((a, b) => a + b, 0),
         delta: r.delta?.[me],
         level: r.levels?.[me],
-        wallet: db.prepare("SELECT poker_balance FROM users WHERE uid=?").get(uid)?.poker_balance,
+        wallet: balances.get(uid),
         hand: r.hands && (reveal || r.game === "nn" || r.seen[me]) ? r.hands[me] : []
       };
     });
