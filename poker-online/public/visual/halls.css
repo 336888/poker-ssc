@@ -126,3 +126,25 @@ body:has(#v-games.on) .tabbar .tb.on {color:#185346!important}
 #v-dfp .dfnum.on,#v-dfp .lhcitem.on,#v-dfp .lot-plays button[aria-pressed=true],#dfBetBar #dfBetBtn:not(:disabled),#dfBetBar .dbchip.on,#v-bet :is(.num,.ps).on {
   color:#ffefc7!important;background:#19513f!important;border-color:#977b43!important;
 }
+
+/* The illustrated nameplate and the live result occupy separate rows. */
+.lot-ticket:is([data-family=race],[data-family=pc28],[data-family=dice]) {
+  padding:0;gap:0;overflow:hidden;border:1px solid #ad925f;
+  background:#fbf5e6;color:#263f35;box-shadow:0 2px 7px #15332821;
+}
+.lot-ticket[data-family=race] {--art-row:0%}
+.lot-ticket[data-family=pc28] {--art-row:50%}
+.lot-ticket[data-family=dice] {--art-row:100%}
+.lot-ticket:is([data-family=race],[data-family=pc28],[data-family=dice]) .ticket-title {
+  min-height:64px;box-sizing:border-box;padding:9px 48% 9px 14px;gap:4px;
+  display:flex;flex-direction:column;align-items:flex-start;justify-content:center;
+  background:#0c2924 url('./lottery-trio.webp') right var(--art-row)/100% 300% no-repeat;
+}
+.lot-ticket:is([data-family=race],[data-family=pc28],[data-family=dice]) .ticket-title strong {
+  color:#fff0cd;font:700 17px/1.25 "Songti SC","Noto Serif CJK SC",serif;overflow-wrap:anywhere;
+}
+.lot-ticket:is([data-family=race],[data-family=pc28],[data-family=dice]) .ticket-title>span {color:#f6d595}
+.lot-ticket:is([data-family=race],[data-family=pc28],[data-family=dice]) .ticket-result {
+  border-top:1px solid #c4ac7c;padding:8px 12px;gap:5px;
+}
+.lot-ticket:is([data-family=race],[data-family=pc28],[data-family=dice]) .ticket-result small {color:#60543e}
