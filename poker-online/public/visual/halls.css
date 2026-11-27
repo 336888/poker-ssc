@@ -431,3 +431,17 @@ body:has(#v-games.on) {background:#10392e url('./jade-brocade.webp') center top/
   box-shadow: inset 0 0 0 1px #c6ab6766;
   text-shadow: none;
 }
+
+/* A disabled hand cannot be selected, but its faces stay fully legible. */
+.game .me :is(.five-hand button, .hand__slot):disabled {
+  opacity: 1;
+  filter: none;
+}
+.game .me :is(.five-hand, .hand) .pcard:not(.pcard--back) {
+  background: #fff;
+  opacity: 1;
+  filter: none;
+  box-shadow: none;
+  text-shadow: none;
+}
+.game .me .hand__slot.is-selected .pcard { outline: 2px solid var(--accent); }
