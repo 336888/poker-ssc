@@ -1,3 +1,5 @@
+import { checkSeats, clearInactiveHolds, installCollateral, walletFile } from './collateral';
+import { existsSync } from 'node:fs';
 import { leaveAmount } from '../src/game/walletFees';
 // 房间管理：创建、查找、持久化、重启恢复、清理空闲房间
 
@@ -26,7 +28,9 @@ export class RoomManager {
     private store: Store,
     private maxRooms: number,
   ) {
+    if (existsSync(walletFile())) installCollateral();
     this.restore();
+    this.reconcileHolds();
     this.sweepTimer = setInterval(() => this.sweep(), 60 * 1000);
   }
 
@@ -51,6 +55,10 @@ export class RoomManager {
     const code = generateInviteCode((c) => this.rooms.has(c));
     const hostId = hostUid && /^[A-Za-z0-9_]{3,24}$/.test(hostUid) ? hostUid : randomId('host');
     const server = RoomServer.create(code, hostId, hostName, config, ip, fp);
+    if (hostUid) {
+      if (hostId !== hostUid) throw new Error('棋牌账户标识无效');
+      checkSeats([hostUid],server.room.config,rtCfg().minBal);
+    }
     // 刚创建时房主还没连上 WebSocket，先视为在线，等心跳超时再判定
     this.wire(server);
     this.persist(server);
@@ -112,6 +120,13 @@ export class RoomManager {
       this.schedulePersist(s);
     };
     const verified=(uid:string)=>this.store.getMeta('wallet:'+code+':'+server.room.createdAt+':'+uid)==='1';
+    server.beforeJoin = uid => {
+      if (verified(uid)) checkSeats([uid],server.room.config,rtCfg().minBal);
+    };
+    server.beforeDeal = id => {
+      const payers = server.room.players.filter(p => p.kind === 'human' && verified(p.id));
+      checkSeats(payers.map(p => p.id),server.room.config,rtCfg().minBal,id);
+    };
     server.onRoundFinished = (record) => {
       const rows=record.settlement.map(r=>({uid:r.playerId,name:r.name,rank:r.rank,remaining:r.remaining,role:r.role}));
       const {deltas}=calcDeltas(rows,1,0,record.mode,record.bombs||0);
@@ -185,6 +200,17 @@ export class RoomManager {
     }
   }
 
+  private reconcileHolds() {
+    const active = new Set<string>();
+    for (const server of this.rooms.values()) {
+      const g = server.game;
+      if (server.room.status === 'playing' && g)
+        active.add([server.room.code,g.round,g.startedAt].join('-'));
+    }
+    clearInactiveHolds(id => active.has(id) || this.store.historyById(id)?.walletStatus === 'pending'
+      || this.store.hasPendingLeaveForRound(id));
+  }
+
   private drop(code: string) {
     const t = this.persistTimers.get(code);
     if (t) clearTimeout(t);
@@ -193,6 +219,7 @@ export class RoomManager {
     this.rooms.delete(code);
     this.idleSince.delete(code);
     this.store.deleteRoom(code);
+    this.reconcileHolds();
     log('房间关闭', code);
   }
 
@@ -214,6 +241,7 @@ export class RoomManager {
   }
 
   private sweep() {
+    try { this.reconcileHolds(); } catch (e) { log('本局担保核对延后', String(e)); }
     const now = Date.now();
     for (const [code, server] of this.rooms) {
       if (!server.isIdle()) {
