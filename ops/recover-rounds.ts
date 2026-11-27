@@ -32,7 +32,16 @@ export function reconcileRounds(gamePath: string, walletPath: string) {
           if (prior) receipt = JSON.parse(String(prior.receipt));
           else if (/database (?:is locked|is busy)|SQLITE_BUSY/i.test(record.walletReason || '')) {
             // Use the same transaction and unique round identifier as normal settlement.
-            receipt = bookRound(record.id,moves).moves;
+            try {
+              receipt = bookRound(record.id,moves).moves;
+            } catch (error) {
+              if (error instanceof Error && error.message === '钱包不存在或余额不足') {
+                record.walletReason = error.message;
+                game.prepare('UPDATE history SET record=? WHERE id=?').run(JSON.stringify(record),record.id);
+                game.exec('COMMIT'); review++; continue;
+              }
+              throw error;
+            }
           } else { review++; continue; }
           if (!Array.isArray(receipt) || receipt.length !== moves.length || !moves.every(m=>
               receipt.some(r=>r.uid===m.uid && r.delta===m.delta && Number.isFinite(r.balance)))) { review++; continue; }
