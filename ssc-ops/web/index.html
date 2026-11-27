@@ -788,6 +788,11 @@ input{font:inherit}
 .rcpt-row{display:flex;justify-content:space-between;padding:6px 0;font-size:13px;
   border-bottom:1px dashed #eef2f8;color:#5b6b80}
 .rcpt-row b{color:#22334a}
+.rcpt{display:flex;flex-direction:column;max-height:calc(100vh - 48px);max-height:calc(100dvh - 48px)}
+.rcpt-body{overflow:auto;min-height:0;overscroll-behavior:contain}
+.rcpt-row{gap:12px}.rcpt-row>span{flex-shrink:0}.rcpt-row b{text-align:right;overflow-wrap:anywhere}
+.rcpt-row .rcpt-total{color:#e6413c}
+.rcpt-body summary{cursor:pointer;padding:8px 0;color:#284763}
 .rcpt-btns{margin-top:14px}
 .rcpt-btns button{width:100%;padding:11px;border-radius:11px;border:none;cursor:pointer;
   background:linear-gradient(180deg,#4f8ef7,#2b6cb0);color:#fff;font-size:15px;font-weight:700}
@@ -2237,10 +2242,12 @@ async function doBet(){
   openAmount((per)=>{
     if(c.issue!==curIssue()?.issue || c.close_at-Date.now()/1000<3)return toast('本期已截止，请重新确认');
     const amt=Number(per)*S.picked.length*(S.mult||1);
+    const info={lot:S.lotName,issue:c.issue,play:S.plays[S.play].name,count:S.picked.length,amount:amt,
+      odds:$('oddsTip').textContent.replace(/^赔率\s*/, '')};
     return api('/api/bet',{lot:S.lot,issue:c.issue,play:S.play,
       extra:String(S.extra),codes:S.picked,amount:amt})
-      .then(d=>{toast(`投注成功 · ${d.bets_count}注 · ￥${d.amount}`);
-        closeM();S.picked=[];renderPad();updatePicked();loadMe();loadBets();})
+      .then(d=>{closeM();showReceipt({...info,...d,lot:info.lot,play:info.play,id:d.id??d.bet_id,count:d.bets_count??info.count});
+        S.picked=[];renderPad();updatePicked();loadMe();loadBets();})
       .catch(e=>toast(e.message));
   });
 }
@@ -2295,9 +2302,13 @@ async function confirmChase(per){
   if(!Number.isSafeInteger(times)||times<1)return toast('请输入有效期数');
   chaseBusy=true;
   try{
+    const plan={lot:S.lotName,play:S.plays[S.play].name,issue:c.issue,amount:per*S.picked.length*(S.mult||1),times};
     const d=await api('/api/chase',{lot:S.lot,play:S.play,extra:String(S.extra),
       codes:S.picked,amount:per*S.picked.length*(S.mult||1),times,stop_on_win:1});
-    toast(`追号已建立 #${d.chase_id}`);closeM();
+    closeM();receiptDialog('追号已建立',[
+      ['计划号',d.chase_id==null?'—':'#'+d.chase_id],['彩种',plan.lot],['起始期号',plan.issue],
+      ['玩法',plan.play],['追号期数',plan.times],['单期金额','￥'+plan.amount.toFixed(2)],['停止条件','中奖即停']
+    ]);
   }catch(e){toast(e.message)}finally{chaseBusy=false}
 }
 function doChase(){openChaseQuick();}
@@ -3682,25 +3693,22 @@ async function dfSubmit(){
   try{
     if(DFB.lhc && DFB.lhc.length){
       // 六合彩：逐项提交
-      const batch=[...DFB.lhc],confirmed=[],unconfirmed=[];
+      const batch=[...DFB.lhc],confirmed=[],unconfirmed=[],lot=DF.plays.name;
       for(const it of batch){
         if(session!==DF.session || issue!==DF.cur?.issue || !dfAccepting())break;
         try{
           const r=await api('/api/df/bet',{game_no:gameNo,issue,rule_key:it.key,pick:[it.name],amount:chip});
-          confirmed.push({it,id:r.id});
+          confirmed.push({it,order:{lot,issue,group:it.group,play:it.name,count:1,amount:chip,odds:it.odds,...r}});
         }catch(e){unconfirmed.push({it,message:e.message});break}
       }
-      if(session!==DF.session || issue!==DF.cur?.issue){toast('原期号 '+issue+' 已确认 '+confirmed.length+' 笔，请查注单');return}
+      const pending=batch.slice(confirmed.length+unconfirmed.length);
+      const notes=[...unconfirmed.map(x=>[x.it.name,'未确认，请查注单 · '+x.message]),
+        ...pending.map(x=>[x.name,'未提交'])];
+      showReceipt(confirmed.map(x=>x.order),notes);
+      if(session!==DF.session || issue!==DF.cur?.issue)return;
       const sent=new Set(confirmed.map(x=>x.it.key));
       DFB.lhc=DFB.lhc.filter(x=>!sent.has(x.key));
       if(!DFB.lhc.length){DFB.play=null;DFB.sel={};clearDfPick()}
-      const details=[
-        ...confirmed.map(x=>x.it.name+' · 已确认 #'+x.id),
-        ...unconfirmed.map(x=>x.it.name+' · 未确认，请查注单：'+x.message),
-        ...batch.slice(confirmed.length+unconfirmed.length).map(x=>x.name+' · 未提交')
-      ];
-      $('modal').innerHTML='<h3>第 '+esc(String(issue))+' 期回执</h3><p>已确认 '+confirmed.length+' 笔，合计 ￥'+(confirmed.length*chip).toFixed(2)+'</p>'+details.map(t=>'<div>'+esc(t)+'</div>').join('')+'<button class="btn" onclick="closeM()">关闭</button>';
-      $('mask').classList.add('on');
     }else{
       const cur = DFB.picks[DFB.play] || {};
       const rows = Object.entries(cur).filter(([k,v])=>v&&v.length).map(([k,v])=>({key:k, values:v}));
@@ -3715,24 +3723,38 @@ async function dfSubmit(){
   }catch(e){ toast(e.message); }finally{ dfSubmitting = false; }
 }
 
-function showReceipt(r, cnt){
-  const multi = cnt && cnt > 1;
-  const st={0:'待开奖',1:'未中',2:'中奖'}[r.status]||'--';
-  const html=`<div class="rcpt">
-    <div class="rcpt-h">投注成功</div>
-    <div class="rcpt-row"><span>注单号</span><b>#${r.id}${multi?' 等 '+cnt+' 笔':''}</b></div>
-    <div class="rcpt-row"><span>彩种</span><b>${r.lot}</b></div>
-    <div class="rcpt-row"><span>期号</span><b>${r.issue}</b></div>
-    <div class="rcpt-row"><span>玩法</span><b>${r.group} · ${r.play}</b></div>
-    <div class="rcpt-row"><span>注数 × 单价</span><b>${r.count} × ￥${(r.amount/r.count).toFixed(2)}</b></div>
-    <div class="rcpt-row"><span>合计</span><b style="color:#e6413c">￥${r.amount}</b></div>
-    <div class="rcpt-row"><span>赔率</span><b>${r.odds}</b></div>
-    <div class="rcpt-row"><span>状态</span><b>${st}</b></div>
-    <div class="rcpt-btns"><button onclick="closeRcpt()">知道了</button></div>
-  </div>`;
+function receiptRows(rows){
+  return rows.map(([label,value])=>`<div class="rcpt-row"><span>${esc(label)}</span><b${label==='合计'?' class="rcpt-total"':''}>${esc(value==null||value===''?'—':value)}</b></div>`).join('');
+}
+
+function receiptDialog(title,rows,detail=''){
+  closeRcpt();
   const m=document.createElement('div'); m.className='rcpt-mask'; m.id='rcptMask';
-  m.innerHTML=html; m.onclick=e=>{ if(e.target===m) closeRcpt(); };
+  m.innerHTML=`<section class="rcpt" role="dialog" aria-modal="true" aria-labelledby="rcptTitle">
+    <div class="rcpt-h" id="rcptTitle">${esc(title)}</div>
+    <div class="rcpt-body">${receiptRows(rows)}${detail}</div>
+    <div class="rcpt-btns"><button type="button">知道了</button></div></section>`;
+  m.querySelector('button').onclick=closeRcpt;
+  m.onclick=e=>{if(e.target===m)closeRcpt()};
+  m.onkeydown=e=>{if(e.key==='Escape')closeRcpt()};
   document.body.appendChild(m);
+  m.querySelector('button').focus({preventScroll:true});
+}
+
+function showReceipt(result,notes=[]){
+  const orders=Array.isArray(result)?result:[result];
+  const fields=r=>[
+    ['注单号',r.id==null?'—':'#'+r.id],['彩种',r.lot],['期号',r.issue],
+    ['玩法',[r.group,r.play].filter(Boolean).join(' · ')],
+    ['注数 × 单价',r.count>0?`${r.count} × ￥${(r.amount/r.count).toFixed(2)}`:'—'],
+    ['合计','￥'+Number(r.amount).toFixed(2)],['赔率',r.odds],
+    ['状态',({0:'待开奖',1:'未中',2:'中奖'})[r.status??0]||'—']
+  ];
+  if(orders.length===1 && !notes.length)return receiptDialog('投注成功',fields(orders[0]));
+  const rows=orders.length?[['彩种',orders[0].lot],['期号',orders[0].issue],['已确认',orders.length+' 笔'],
+    ['合计','￥'+orders.reduce((sum,r)=>sum+Number(r.amount),0).toFixed(2)]]:[];
+  const detail=orders.map(r=>`<details><summary>${esc(r.id==null?'已确认注单':'#'+r.id)} · ${esc(r.play)}</summary>${receiptRows(fields(r))}</details>`).join('')+receiptRows(notes);
+  receiptDialog(notes.length?(orders.length?'部分投注已确认':'投注未确认'):'投注成功',rows,detail);
 }
 function closeRcpt(){ const m=$('rcptMask'); if(m) m.remove(); }
 
