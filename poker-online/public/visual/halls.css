@@ -101,3 +101,28 @@ body:has(#v-games.on) .tabbar .tb.on {color:#185346!important}
   #noticeText {animation:none!important}
   #bannerTrack {transition:none!important}
 }
+
+/* Carry the gold dragon identity through lottery selection and results. */
+#hall .lot-ticket[data-family=ssc],#v-df .lot-ticket[data-family=ssc] {
+  --ink:#cead6a;color:#fff2d6;border:1px solid #a38954;
+  background:linear-gradient(110deg,#0c302cf2,#205447de),url('./felt.webp') center/cover;
+}
+.lot-ticket[data-family=ssc] .ticket-title strong {color:#fff1cf;font-family:"Songti SC","Noto Serif CJK SC",serif}
+.lot-ticket[data-family=ssc] .ticket-title>span,.lot-ticket[data-family=ssc] .ticket-result small {color:#f1dbab}
+.lot-ticket[data-family=ssc] .ticket-result {border-color:#b99c6566}
+.lot-ticket[data-family=ssc] .ticket-values {color:#fff0cb}
+.lot-ticket[data-family=ssc] .ticket-values .dball {background:#f7e6bf!important;color:#49391e!important;border-radius:50%}
+#v-dfp.on,#v-bet.on,#v-open.on {background:#f4f0e6!important}
+:is(#v-dfp,#v-bet,#v-open,#v-df,#v-hist) .vhead {
+  background:#f3ecdc!important;color:#25473d!important;border-bottom:1px solid #cbb98f!important;box-shadow:inset 4px 0 #92733e;
+}
+#v-dfp .draw-summary,#v-bet .issuebar {
+  background:linear-gradient(105deg,#133b32f5,#244b3de6),url('./felt.webp') center/cover!important;
+  color:#ffedc8!important;border-bottom:2px solid #b39860!important;
+}
+#v-bet .issuebar :is(.lbl,.iss,.cd),#v-dfp .draw-top,#v-dfp .draw-top strong {color:#fff1d0!important}
+#v-dfp .draw-row {background:#fcf6e9!important;color:#234238!important}
+#v-dfp #dfpTabs .rktab.on {box-shadow:inset 0 -3px #977332!important;color:#104837!important}
+#v-dfp .dfnum.on,#v-dfp .lhcitem.on,#v-dfp .lot-plays button[aria-pressed=true],#dfBetBar #dfBetBtn:not(:disabled),#dfBetBar .dbchip.on,#v-bet :is(.num,.ps).on {
+  color:#ffefc7!important;background:#19513f!important;border-color:#977b43!important;
+}
