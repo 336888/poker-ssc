@@ -98,6 +98,12 @@ export class Store {
       .run(record.id, record.roomCode, record.mode, record.endedAt, record.players.map((p) => p.name).join(' '), JSON.stringify(record));
   }
 
+  hasPendingLeaveForRound(id: string): boolean {
+    const [code,round,started] = id.split('-');
+    return !!this.db.prepare('SELECT 1 FROM pending_leave_fees WHERE id GLOB ? LIMIT 1')
+      .get(['leave',code,'*',started,round,'*'].join(':'));
+  }
+
   historyById(id: string): GameRecord | null {
     const row = this.db.prepare('SELECT record FROM history WHERE id = ?').get(id);
     return row ? JSON.parse(String(row.record)) : null;
