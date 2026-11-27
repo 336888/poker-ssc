@@ -45,3 +45,59 @@ body:has(#tabs) table th{background:#edf3f9;color:#273d55}
 .tabbar .tb.on {color:#165d9c!important}
 :where(button,a,input,select,textarea):focus-visible {outline:3px solid #418cce;outline-offset:2px}
 .glow.g2 {max-width:100%;right:0!important}
+
+/* The lobby has its own palette; shared betting and account views retain theirs. */
+body:has(#v-games.on) {
+  background:radial-gradient(ellipse at 80% 0,#1c4940,transparent 65vh),#0d2427!important;
+}
+#banner.banner {
+  box-sizing:border-box;height:clamp(162px,24vw,292px)!important;overflow:hidden!important;
+  padding:0!important;border:0!important;border-bottom:1px solid #a88b56!important;
+  background:#102c28 url('./dragon-lounge.webp') center 52%/cover no-repeat!important;
+}
+#banner .glow,#banner .art {display:none!important}
+#banner .txt {
+  left:clamp(20px,7vw,110px)!important;top:50%!important;bottom:auto!important;
+  transform:translateY(-50%)!important;align-items:flex-start;width:max-content;max-width:54%;
+}
+#banner .brand {
+  color:#ffedc2!important;font:700 clamp(28px,4vw,58px)/1.15 "Songti SC","Noto Serif CJK SC",serif!important;
+  letter-spacing:.09em!important;text-shadow:0 2px 9px #061d1a!important;
+}
+#banner .l1,#banner .l2 {color:#fff2d6!important;text-shadow:0 1px 5px #051816}
+#banner .l1 {margin-top:10px!important}
+#banner .l1 em {color:#ffdb85!important}
+#banner .l3 {background:#092823e8!important;border-color:#c7ad79!important;color:#f7deb2!important}
+#banner .l3 b {background:#c3a46d!important;color:#162d28!important}
+#homeBanner:has(#bannerTrack:empty) {display:none!important}
+#homeBanner:has(#bannerTrack>div) {
+  height:86px!important;border:1px solid #a68b573d;box-shadow:none!important;background:#12332e!important;
+}
+#homeBanner #bannerTrack>div {
+  background:linear-gradient(105deg,#153d35,#214c42 65%,#394839)!important;
+}
+#homeBanner #bannerTrack>div>div:last-child {width:53px!important;height:53px!important}
+#homeBanner #bannerTrack>div>div:nth-last-child(2)>div:first-child {font-size:19px!important}
+#noticeBar {background:#132f2e!important;color:#f2dfb6!important;border-block:1px solid #a58b552e!important}
+#userbar.userbar {
+  background:linear-gradient(110deg,#faf5e8,#f2e8d4)!important;border:1px solid #baaa8b!important;
+  box-shadow:0 4px 14px #07171224!important;
+}
+#userbar .bal,#userbar .name,#userbar .act {color:#244d44!important}
+#userbar .act .ic {background:#dbe5da!important;color:#245548!important}
+#userbar .act.on .ic {background:#205445!important;color:white!important}
+#mainTabs.maintabs {background:transparent!important;gap:8px}
+#mainTabs .mt[data-k] {border-radius:14px!important;border:1px solid #d4bd8b61!important}
+#mainTabs .mt strong {color:#fff3db!important;background:linear-gradient(90deg,#08191dd9,#08191d66);border-radius:6px;padding:4px 8px}
+#mainTabs .mt[aria-pressed=true] {outline-color:#ffd180}
+#v-games .lobby {background:#faf7ee!important;color:#223e36;border-radius:16px 16px 0 0}
+#v-games #winTicker {background:#f7efdc!important;border-color:#e2d6bd!important}
+body:has(#v-games.on) .tabbar {background:#f9f6ed!important;border-top:1px solid #c2b79d!important}
+body:has(#v-games.on) .tabbar .tb.on {color:#185346!important}
+@media(max-width:600px) {
+  #banner.banner {background-image:linear-gradient(90deg,#0a23233d,transparent 64%),url('./dragon-lounge-mobile.webp')!important}
+}
+@media(prefers-reduced-motion:reduce) {
+  #noticeText {animation:none!important}
+  #bannerTrack {transition:none!important}
+}
