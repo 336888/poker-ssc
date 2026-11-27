@@ -103,15 +103,6 @@ body:has(#v-games.on) .tabbar .tb.on {color:#185346!important}
 }
 
 /* Carry the gold dragon identity through lottery selection and results. */
-#hall .lot-ticket[data-family=ssc],#v-df .lot-ticket[data-family=ssc] {
-  --ink:#cead6a;color:#fff2d6;border:1px solid #a38954;
-  background:linear-gradient(110deg,#0c302cf2,#205447de),url('./felt.webp') center/cover;
-}
-.lot-ticket[data-family=ssc] .ticket-title strong {color:#fff1cf;font-family:"Songti SC","Noto Serif CJK SC",serif}
-.lot-ticket[data-family=ssc] .ticket-title>span,.lot-ticket[data-family=ssc] .ticket-result small {color:#f1dbab}
-.lot-ticket[data-family=ssc] .ticket-result {border-color:#b99c6566}
-.lot-ticket[data-family=ssc] .ticket-values {color:#fff0cb}
-.lot-ticket[data-family=ssc] .ticket-values .dball {background:#f7e6bf!important;color:#49391e!important;border-radius:50%}
 #v-dfp.on,#v-bet.on,#v-open.on {background:#f4f0e6!important}
 :is(#v-dfp,#v-bet,#v-open,#v-df,#v-hist) .vhead {
   background:#f3ecdc!important;color:#25473d!important;border-bottom:1px solid #cbb98f!important;box-shadow:inset 4px 0 #92733e;
@@ -128,27 +119,32 @@ body:has(#v-games.on) .tabbar .tb.on {color:#185346!important}
 }
 
 /* The illustrated nameplate and the live result occupy separate rows. */
-.lot-ticket:is([data-family=race],[data-family=pc28],[data-family=dice],[data-family=fc3d],[data-family=happy10],[data-family=six]) {
+.lot-ticket:is([data-family=ssc],[data-family=race],[data-family=pc28],[data-family=dice],[data-family=fc3d],[data-family=happy10],[data-family=six]) {
   padding:0;gap:0;overflow:hidden;border:1px solid #ad925f;
   background:#fbf5e6;color:#263f35;box-shadow:0 2px 7px #15332821;
+}
+.lot-ticket[data-family=ssc] {--ticket-art:url('./ssc-cities.webp');--ticket-height:200%;--art-row:0%}
+.lot-ticket[data-family=ssc][data-city=hk] {--art-row:100%}
+.lot-ticket[data-family=ssc] .ticket-values .dball {
+  background:#f5e7c9!important;color:#3d3526!important;border:1px solid #bea573;border-radius:50%;
 }
 .lot-ticket:is([data-family=fc3d],[data-family=happy10],[data-family=six]) {--ticket-art:url('./lottery-classics.webp')}
 .lot-ticket[data-family=race],.lot-ticket[data-family=fc3d] {--art-row:0%}
 .lot-ticket[data-family=pc28],.lot-ticket[data-family=happy10] {--art-row:50%}
 .lot-ticket[data-family=dice],.lot-ticket[data-family=six] {--art-row:100%}
-.lot-ticket:is([data-family=race],[data-family=pc28],[data-family=dice],[data-family=fc3d],[data-family=happy10],[data-family=six]) .ticket-title {
+.lot-ticket:is([data-family=ssc],[data-family=race],[data-family=pc28],[data-family=dice],[data-family=fc3d],[data-family=happy10],[data-family=six]) .ticket-title {
   min-height:64px;box-sizing:border-box;padding:9px 48% 9px 14px;gap:4px;
   display:flex;flex-direction:column;align-items:flex-start;justify-content:center;
-  background:#0c2924 var(--ticket-art,url('./lottery-trio.webp')) right var(--art-row)/100% 300% no-repeat;
+  background:#0c2924 var(--ticket-art,url('./lottery-trio.webp')) right var(--art-row)/100% var(--ticket-height,300%) no-repeat;
 }
-.lot-ticket:is([data-family=race],[data-family=pc28],[data-family=dice],[data-family=fc3d],[data-family=happy10],[data-family=six]) .ticket-title strong {
+.lot-ticket:is([data-family=ssc],[data-family=race],[data-family=pc28],[data-family=dice],[data-family=fc3d],[data-family=happy10],[data-family=six]) .ticket-title strong {
   color:#fff0cd;font:700 17px/1.25 "Songti SC","Noto Serif CJK SC",serif;overflow-wrap:anywhere;
 }
-.lot-ticket:is([data-family=race],[data-family=pc28],[data-family=dice],[data-family=fc3d],[data-family=happy10],[data-family=six]) .ticket-title>span {color:#f6d595}
-.lot-ticket:is([data-family=race],[data-family=pc28],[data-family=dice],[data-family=fc3d],[data-family=happy10],[data-family=six]) .ticket-result {
+.lot-ticket:is([data-family=ssc],[data-family=race],[data-family=pc28],[data-family=dice],[data-family=fc3d],[data-family=happy10],[data-family=six]) .ticket-title>span {color:#f6d595}
+.lot-ticket:is([data-family=ssc],[data-family=race],[data-family=pc28],[data-family=dice],[data-family=fc3d],[data-family=happy10],[data-family=six]) .ticket-result {
   border-top:1px solid #c4ac7c;padding:8px 12px;gap:5px;
 }
-.lot-ticket:is([data-family=race],[data-family=pc28],[data-family=dice],[data-family=fc3d],[data-family=happy10],[data-family=six]) .ticket-result small {color:#60543e}
+.lot-ticket:is([data-family=ssc],[data-family=race],[data-family=pc28],[data-family=dice],[data-family=fc3d],[data-family=happy10],[data-family=six]) .ticket-result small {color:#60543e}
 
 /* Shared materials. Keep result colours, roulette pockets and playing-card suits semantic. */
 :root {

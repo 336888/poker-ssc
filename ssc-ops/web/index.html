@@ -2036,7 +2036,7 @@ function lotteryCard(x, cat){
   const dice=cat==='快三' || /快三|快3/.test(x.name);
   const family = lotteryCardFamilies.get(cat) || (dice ? 'dice' : /时时彩/.test(x.name) ? 'ssc' : 'draw');
   const issue=x.last?.issue;
-  return `<button type="button" class="lot-ticket" data-family="${family}" data-no="${esc(String(x.no))}" onclick="openDfPlay(this.dataset.no)">
+  return `<button type="button" class="lot-ticket" data-family="${family}"${family==='ssc' && /香港/.test(x.name) ? ' data-city="hk"' : ''} data-no="${esc(String(x.no))}" onclick="openDfPlay(this.dataset.no)">
     <span class="ticket-title"><strong>${esc(x.name)}</strong><span>下注 ›</span></span>
     <span class="ticket-result"><small>${issue?esc(String(issue))+'期':'上期开奖'}</small>
     <span class="ticket-values">${numbers.length?numbers.map(n=>drawFace(n,dice,cat==='六合彩'?'lhc':'num')).join(''):'等待开奖'}</span></span></button>`;
