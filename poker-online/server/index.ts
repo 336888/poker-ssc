@@ -60,7 +60,16 @@ const app = await createApp({
 });
 
 // 启动运行时配置拉取（机器人胜率、房费、门槛、风控阈值）
-await startRtCfg();
+await startRtCfg(() => {
+  const db = new DatabaseSync(env.CARD_WALLET_DB || '/opt/ssc-ops/ssc_ops.db', { readOnly: true });
+  try {
+    return db.prepare(
+      'SELECT b.uid FROM bots b JOIN users u ON u.uid=b.uid WHERE b.enabled=1 AND u.is_bot=1 ORDER BY b.uid'
+    ).all().map(row => String(row.uid));
+  } finally {
+    db.close();
+  }
+});
 
 let stopping = false;
 async function shutdown(signal: string) {
